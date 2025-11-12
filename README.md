@@ -42,7 +42,7 @@ pip install numpy==1.23.5 tensorboard opencv-python
 1. Train a policy
 
 ```
-cd pnd_humanoid_robot/pnd_humanoid_robot/scripts
+cd pnd_humanoid_robot/pnd_humanoid_robot_gym/scripts
 python train.py --task=adam
 ```
    -  To run on CPU add following arguments: `--sim_device=cpu`, `--rl_device=cpu` (sim on CPU and rl on GPU is possible).
