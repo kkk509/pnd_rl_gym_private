@@ -25,7 +25,7 @@
 
 ## 📋 Table of Contents
 
-- [Installation & Configuration](#-installation-configuration)
+- [Installation & Configuration](#-installation--configuration)
 - [Process Overview](#-process-overview)
 - [User Guide](#-user-guide)
   - [Training](#1-training)
