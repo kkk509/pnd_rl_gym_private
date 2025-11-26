@@ -1,25 +1,45 @@
-<div align="center">
-  <h1 align="center">PNDbotics RL GYM</h1>
-  <p align="center">
-    <span> 🌎English </span> | <a href="README_zh.md"> 🇨🇳中文 </a>
-  </p>
-</div>
-
-<p align="center">
-  <strong>This is a repository for reinforcement learning implementation based on PNDbotics robots, supporting PNDbotics adam_lite_12dof.</strong> 
-</p>
+# Overview
 
 <div align="center">
 
-| <div align="center"> Isaac Gym </div> | <div align="center">  Mujoco </div> |  <div align="center"> Physical </div> |
-|--- | --- | --- |
+| Isaac Gym | Mujoco | Physical |
+| --- | --- | --- |
 | [<img src="doc/pnd_gif/adam_lite_isaac.gif" width="240px">](https://oss-global-cdn.PNDbotics.com/static/5bbc5ab1d551407080ca9d58d7bec1c8.mp4) | [<img src="doc/pnd_gif/adam_lite_mujoco.gif" width="240px">](https://oss-global-cdn.PNDbotics.com/static/5aa48535ffd641e2932c0ba45c8e7854.mp4) | [<img src="https://oss-global-cdn.PNDbotics.com/static/78c61459d3ab41448cfdb31f6a537e8b.GIF" width="240px">](https://oss-global-cdn.PNDbotics.com/static/0818dcf7a6874b92997354d628adcacd.mp4) |
 
+[![Ubuntu](https://img.shields.io/badge/Ubuntu-20.04%2B-E95420?logo=ubuntu&logoColor=white)](https://releases.ubuntu.com/20.04/)
+[![NVIDIA RTX](https://img.shields.io/badge/GPU-NVIDIA_RTX-76B900?logo=nvidia&logoColor=white)](https://www.nvidia.com/en-us/geforce/rtx/)
+[![NVIDIA Driver](https://img.shields.io/badge/Driver-525%2B-76B900?logo=nvidia&logoColor=white)](https://www.nvidia.com/Download/index.aspx)
+[![Python](https://img.shields.io/badge/Python-3.8-3776AB?logo=python&logoColor=white)](https://www.python.org/downloads/release/python-380/)
+[![Isaac Gym](https://img.shields.io/badge/Isaac_Gym-GPU_Accelerated-000000?logo=nvidia&logoColor=white)](https://developer.nvidia.com/isaac-gym)
+[![Mujoco](https://img.shields.io/badge/Mujoco-3.2.0-005BBB?logo=google&logoColor=white)](https://mujoco.org/)
+
+![Updated At](https://img.shields.io/badge/Updated_At-November-64748B?style=flat-square)
+![Version](https://img.shields.io/badge/Version-1.0.0-2563EB?style=flat-square)
+![Supported Robot](https://img.shields.io/badge/Supported-Adam_Lite-4f46e5?style=flat-square)
+[![License](https://img.shields.io/badge/License-BSD--3--Clause-059669?style=flat-square)](https://opensource.org/licenses/BSD-3-Clause)
+[![Issues](https://img.shields.io/badge/issues-open-EF4444?style=flat-square)](https://github.com/pndbotics/pnd_rl_gym/issues)
+
+**A compact, GPU-accelerated RL framework for PNDbotics robots *adam_lite_12dof*, integrating Isaac Gym–style parallel simulation, Mujoco validation. Provides low-level control APIs, high-throughput training environments, and reproducible Sim2Real pipelines optimized for robotics RL research.**
+
 </div>
 
----
+## 📋 Table of Contents
 
-## 📦 Installation and Configuration
+- [Installation & Configuration](#-installation-configuration)
+- [Process Overview](#-process-overview)
+- [User Guide](#-user-guide)
+  - [Training](#1-training)
+  - [Play](#2-play)
+  - [Sim2Sim (Mujoco)](#3-sim2sim-mujoco)
+  - [Sim2Real (Physical Deployment)](#4-sim2real-physical-deployment)
+- [WandB Integration](#-wandb-integration)
+- [Contributing](#-contributing)
+- [License](#-license)
+- [Acknowledgement](#-acknowledgement)
+- [Contact](#-contact)
+- [Version Log](#-version-log)
+
+## 📦 Installation & Configuration
 
 Please refer to [setup.md](/doc/setup_en.md) for installation and configuration steps.
 
@@ -38,12 +58,10 @@ The basic workflow for using reinforcement learning to achieve motion control is
 
 ### 1. Training
 
-Run the following command to start training:
-
 ```bash
 screen -S pndbotics
-cd ~/Documents/pndbotics_rl_gym
-conda activate pndbotics-rl
+cd ~/Documents/pnd_rl_gym
+conda activate pnd_rl_gym
 python legged_gym/scripts/train.py --task=adam_lite_12dof --headless
 ```
 
@@ -62,8 +80,6 @@ python legged_gym/scripts/train.py --task=adam_lite_12dof --headless
 - `--rl_device`: Reinforcement learning computation device; specify CPU as `--rl_device=cpu`.
 
 **Default Training Result Directory**: `logs/<experiment_name>/<date_time>_<run_name>/model_<iteration>.pt`
-
----
 
 ### 2. Play
 
@@ -95,8 +111,6 @@ Play exports the Actor network, saving it in `logs/{experiment_name}/exported/po
 | --- |
 | [![adam_lite_12dof](doc/pnd_gif/adam_lite_isaac.gif)]|
 
----
-
 ### 3. Sim2Sim (Mujoco)
 
 Run Sim2Sim in the Mujoco simulator:
@@ -125,8 +139,6 @@ The default model is located at `deploy/pre_train/{robot}/motion.pt`; custom-tra
 | [![mujoco_adam_lite_12dof](doc/pnd_gif/adam_lite_mujoco.gif)]|
 
 
----
-
 ### 4. Sim2Real (Physical Deployment)
 
 Before deploying to the physical robot, ensure it’s in debug mode. Detailed steps can be found in the [Physical Deployment Guide](deploy/deploy_real/README.md):
@@ -146,7 +158,6 @@ python deploy/deploy_real/deploy_real.py {net_interface} {config_name}
 | --- |
 | [![real_adam_lite_12dof](https://oss-global-cdn.pndbotics.com/static/78c61459d3ab41448cfdb31f6a537e8b.GIF)](https://oss-global-cdn.PNDbotics.com/static/0818dcf7a6874b92997354d628adcacd.mp4) |
 
----
 
 ## 📊 WandB Integration
 
@@ -356,25 +367,45 @@ python legged_gym/scripts/train.py --task=adam_lite_12dof --wandb
 # 6. Download model checkpoints from WandB
 ```
 
+## 🤝 Contributing
+
+Contributions are welcome.
+
+Feel free to open issues or pull requests.
+
+## 📄 License
+
+[BSD-3 Clause © PNDbotics](./LICENSE)
+
+## 🙏 Acknowledgments
+
+- [legged_gym](https://github.com/leggedrobotics/legged_gym)
+- [rsl_rl](https://github.com/leggedrobotics/rsl_rl.git)
+- [mujoco](https://github.com/google-deepmind/mujoco.git)
+- [pndbotics_sdk2_python](https://github.com/pndbotics/pndbotics_sdk2_python.git)
+
+## 📞 Contact
+
+- Email: info@pndbotics.com
+- Wiki: https://wiki.pndbotics.com  
+- SDK: https://github.com/pndbotics/pnd_sdk_python  
+- Issues: https://github.com/pndbotics/pnd_mujoco/issues
+
+## 📜 Version Log
+
+| Version | Date       | Updates                                                                              |
+| ------- | ---------- | ------------------------------------------------------------------------------------ |
+| v1.0.0  | 2025-11-25 | Initial release |
+
 ---
 
-## 🎉 Acknowledgments
+<div align="center">
 
-This repository is built upon the support and contributions of the following open-source projects. Special thanks to:
+[![Website](https://img.shields.io/badge/Website-PNDbotics-black?)](https://www.pndbotics.com)
+[![Twitter](https://img.shields.io/badge/Twitter-@PNDbotics-1DA1F2?logo=twitter&logoColor=white)](https://x.com/PNDbotics)
+[![YouTube](https://img.shields.io/badge/YouTube-ff0000?style=flat&logo=youtube&logoColor=white)](https://www.youtube.com/@PNDbotics)
+[![Bilibili](https://img.shields.io/badge/-bilibili-ff69b4?style=flat&labelColor=ff69b4&logo=bilibili&logoColor=white)](https://space.bilibili.com/303744535)
 
-- [legged\_gym](https://github.com/leggedrobotics/legged_gym): The foundation for training and running codes.
-- [rsl\_rl](https://github.com/leggedrobotics/rsl_rl.git): Reinforcement learning algorithm implementation.
-- [mujoco](https://github.com/google-deepmind/mujoco.git): Providing powerful simulation functionalities.
-- [pndbotics\_sdk2\_python](https://github.com/pndbotics/pndbotics_sdk2_python.git): Hardware communication interface for physical deployment.
+**⭐ Star us on GitHub — it helps!**
 
----
-
-## 🔖 License
-
-This project is licensed under the [BSD 3-Clause License](./LICENSE):
-1. The original copyright notice must be retained.
-2. The project name or organization name may not be used for promotion.
-3. Any modifications must be disclosed.
-
-For details, please read the full [LICENSE file](./LICENSE).
-
+</div>
