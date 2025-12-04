@@ -2,22 +2,18 @@ import struct
 
 
 class KeyMap:
-    R1 = 0
-    L1 = 1
-    start = 2
-    select = 3
-    R2 = 4
-    L2 = 5
-    F1 = 6
-    F2 = 7
-    A = 8
-    B = 9
-    X = 10
-    Y = 11
-    up = 12
-    right = 13
-    down = 14
-    left = 15
+    A = 0
+    B = 1
+    X = 2
+    Y = 3
+    LB = 4
+    RB = 5
+    select = 6
+    start = 7
+    home = 8
+    lo = 9
+    ro = 10
+
 
 
 class RemoteController:
@@ -26,14 +22,15 @@ class RemoteController:
         self.ly = 0
         self.rx = 0
         self.ry = 0
-        self.button = [0] * 16
+        self.lt = 0
+        self.rt = 0
+        self.xx = 0
+        self.yy = 0
+        self.button = [0] * 10
 
     def set(self, data):
         # wireless_remote
-        keys = struct.unpack("H", data[2:4])[0]
-        for i in range(16):
-            self.button[i] = (keys & (1 << i)) >> i
-        self.lx = struct.unpack("f", data[4:8])[0]
-        self.rx = struct.unpack("f", data[8:12])[0]
-        self.ry = struct.unpack("f", data[12:16])[0]
-        self.ly = struct.unpack("f", data[20:24])[0]
+        for i in range(10):
+            self.button[i] = data [i + 8]
+        # for i in range():
+        #     self.button[i] = data[27 + i]

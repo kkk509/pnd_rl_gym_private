@@ -50,27 +50,45 @@ class AdamLite12dofRoughCfg(LeggedRobotCfg):
     class control(LeggedRobotCfg.control):
         # PD Drive parameters:
         control_type = 'P'
-        # PD Drive parameters - tuned for stability and tracking
+
         stiffness = {
-            'hipPitch': 150,   # 230 Nm effort in URDF
-            'hipRoll': 100,    # 160 Nm effort in URDF
-            'hipYaw': 80,      # 105 Nm effort in URDF
-            'kneePitch': 180,  # 230 Nm effort in URDF
-            'anklePitch': 40,  # 40 Nm effort in URDF
-            'ankleRoll': 20,   # 12 Nm effort in URDF
+            'hipPitch': 305,   # 230 Nm effort in URDF
+            'hipRoll': 700,    # 160 Nm effort in URDF
+            'hipYaw': 405,      # 105 Nm effort in URDF
+            'kneePitch': 305,  # 230 Nm effort in URDF
+            'anklePitch': 25,  # 40 Nm effort in URDF
+            'ankleRoll': 0,   # 12 Nm effort in URDF
         }  # [N*m/rad]
         damping = {
-            'hipPitch': 3.0,
-            'hipRoll': 2.5,
-            'hipYaw': 2.0,
-            'kneePitch': 4.0,
-            'anklePitch': 2.0,
-            'ankleRoll': 1.5,
+            'hipPitch': 6.1,
+            'hipRoll': 30.0,
+            'hipYaw': 6.1,
+            'kneePitch':  6.1,
+            'anklePitch': 2.55,
+            'ankleRoll': 0.35,
         }  # [N*m*s/rad]
+
+        # PD Drive parameters - tuned for stability and tracking
+        # stiffness = {
+        #     'hipPitch': 150,   # 230 Nm effort in URDF
+        #     'hipRoll': 100,    # 160 Nm effort in URDF
+        #     'hipYaw': 80,      # 105 Nm effort in URDF
+        #     'kneePitch': 180,  # 230 Nm effort in URDF
+        #     'anklePitch': 40,  # 40 Nm effort in URDF
+        #     'ankleRoll': 0,   # 12 Nm effort in URDF
+        # }  # [N*m/rad]
+        # damping = {
+        #     'hipPitch': 3.0,
+        #     'hipRoll': 2.5,
+        #     'hipYaw': 2.0,
+        #     'kneePitch': 4.0,
+        #     'anklePitch': 2.0,
+        #     'ankleRoll': 0.35,
+        # }  # [N*m*s/rad]
         # action scale: target angle = actionScale * action + defaultAngle
-        action_scale = 0.22
+        action_scale = 0.2
         # decimation: Number of control action updates @ sim DT per policy DT
-        decimation = 4
+        decimation = 10
 
     class asset(LeggedRobotCfg.asset):
         file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/adam_lite/adam_lite_12dof.urdf'
@@ -144,7 +162,7 @@ class AdamLite12dofRoughCfgPPO(LeggedRobotCfgPPO):
     class runner(LeggedRobotCfgPPO.runner):
         policy_class_name = "ActorCriticRecurrent"
         max_iterations = 5000
-        run_name = ''
+        run_name = 'episode_10s_lpd_scale0.2'
         experiment_name = 'adam_lite_12dof'
         num_steps_per_env = 32
         
