@@ -13,8 +13,8 @@
 [![Isaac Gym](https://img.shields.io/badge/Isaac_Gym-GPU_Accelerated-000000?logo=nvidia&logoColor=white)](https://developer.nvidia.com/isaac-gym)
 [![Mujoco](https://img.shields.io/badge/Mujoco-3.2.0-005BBB?logo=google&logoColor=white)](https://mujoco.org/)
 
-![Updated At](https://img.shields.io/badge/Updated_At-November-64748B?style=flat-square)
-![Version](https://img.shields.io/badge/Version-1.0.0-2563EB?style=flat-square)
+![Updated At](https://img.shields.io/badge/Updated_At-December-64748B?style=flat-square)
+![Version](https://img.shields.io/badge/Version-1.0.1-2563EB?style=flat-square)
 ![Supported Robot](https://img.shields.io/badge/Supported-Adam_Lite-4f46e5?style=flat-square)
 [![License](https://img.shields.io/badge/License-BSD--3--Clause-059669?style=flat-square)](https://opensource.org/licenses/BSD-3-Clause)
 [![Issues](https://img.shields.io/badge/issues-open-EF4444?style=flat-square)](https://github.com/pndbotics/pnd_rl_gym/issues)
@@ -395,6 +395,7 @@ Feel free to open issues or pull requests.
 
 | Version | Date       | Updates                                                                              |
 | ------- | ---------- | ------------------------------------------------------------------------------------ |
+| v1.0.1  | 2025-12-10 | Add sp 12 dof for real |
 | v1.0.0  | 2025-11-25 | Initial release |
 
 ---
