@@ -6,9 +6,10 @@ import torch
 
 from pndbotics_sdk_py.core.channel import ChannelPublisher, ChannelFactoryInitialize
 from pndbotics_sdk_py.core.channel import ChannelSubscriber, ChannelFactoryInitialize
-from pndbotics_sdk_py.idl.default import pnd_adam_msg_dds__LowCmd_, pnd_adam_msg_dds__LowState_
+from pndbotics_sdk_py.idl.default import pnd_adam_msg_dds__LowCmd_, pnd_adam_msg_dds__LowState_, pnd_adam_msg_dds__HandCmd_
 from pndbotics_sdk_py.idl.pnd_adam.msg.dds_ import LowCmd_
 from pndbotics_sdk_py.idl.pnd_adam.msg.dds_ import LowState_ 
+from pndbotics_sdk_py.idl.pnd_adam.msg.dds_ import HandCmd_
 
 from common.command_helper import create_damping_cmd, create_zero_cmd, init_cmd_adam, MotorMode
 from common.rotation_helper import get_gravity_orientation, transform_imu_data
@@ -31,20 +32,28 @@ class Controller:
         self.obs = np.zeros(config.num_obs, dtype=np.float32)
         self.cmd = np.array([0.0, 0, 0])
         self.counter = 0
-
+       
         if config.msg_type == "adam_lite":
+            self.low_cmd = pnd_adam_msg_dds__LowCmd_(25)
+            self.low_state = pnd_adam_msg_dds__LowState_(25)
+        elif config.msg_type == "adam_sp":
             self.low_cmd = pnd_adam_msg_dds__LowCmd_(31)
             self.low_state = pnd_adam_msg_dds__LowState_(31)
-            self.mode_pr_ = MotorMode.PR
-            self.mode_machine_ = 0
-
-            self.lowcmd_publisher_ = ChannelPublisher(config.lowcmd_topic, LowCmd_)
-            self.lowcmd_publisher_.Init()
-
-            self.lowstate_subscriber = ChannelSubscriber(config.lowstate_topic, LowState_)
-            self.lowstate_subscriber.Init(self.LowState_Handler, 10)
+            self.hand_cmd = pnd_adam_msg_dds__HandCmd_()
+            self.close_hand = np.array([500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500], dtype=int)
+            self.hand_pub = ChannelPublisher("rt/handcmd", HandCmd_)
+            self.hand_pub.Init()
         else:
             raise ValueError("Invalid msg_type")
+        self.mode_pr_ = MotorMode.PR
+        self.mode_machine_ = 0
+
+        self.lowcmd_publisher_ = ChannelPublisher(config.lowcmd_topic, LowCmd_)
+        self.lowcmd_publisher_.Init()
+
+
+        self.lowstate_subscriber = ChannelSubscriber(config.lowstate_topic, LowState_)
+        self.lowstate_subscriber.Init(self.LowState_Handler, 10)
 
         # wait for the subscriber to receive data
         self.wait_for_low_state()
@@ -78,12 +87,19 @@ class Controller:
             time.sleep(self.config.control_dt)
 
     def move_to_default_pos(self):
+
+        if config.msg_type != "adam_lite":
+            for i in range(12):
+                self.hand_cmd.position[i] = self.close_hand[i]
+            self.hand_pub.Write(self.hand_cmd)
+
         print("Moving to default pos.")
         # move time 2s
         total_time = 2
         num_step = int(total_time / self.config.control_dt)
         
         dof_idx = self.config.leg_joint2motor_idx + self.config.arm_waist_joint2motor_idx
+
         kps = self.config.kps + self.config.arm_waist_kps
         kds = self.config.kds + self.config.arm_waist_kds
         default_pos = np.concatenate((self.config.default_angles, self.config.arm_waist_target), axis=0)
@@ -106,9 +122,16 @@ class Controller:
                 self.low_cmd.motor_cmd[motor_idx].kd = kds[j]
                 self.low_cmd.motor_cmd[motor_idx].tau = 0
             self.send_cmd(self.low_cmd)
+
             time.sleep(self.config.control_dt)
 
     def default_pos_state(self):
+
+        if config.msg_type != "adam_lite":
+            for i in range(12):
+                self.hand_cmd.position[i] = self.close_hand[i]
+            self.hand_pub.Write(self.hand_cmd)
+            
         print("Enter default pos state.")
         print("Waiting for the Button A signal...")
         while self.remote_controller.button[KeyMap.A] != 1:
@@ -130,6 +153,12 @@ class Controller:
             time.sleep(self.config.control_dt)
 
     def run(self):
+
+        if config.msg_type != "adam_lite":
+            for i in range(12):
+                self.hand_cmd.position[i] = self.close_hand[i]
+            self.hand_pub.Write(self.hand_cmd)
+            
         self.counter += 1
         # Get the current joint position and velocity
         for i in range(len(self.config.leg_joint2motor_idx)):
