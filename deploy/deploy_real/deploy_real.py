@@ -33,8 +33,8 @@ class Controller:
         self.counter = 0
 
         if config.msg_type == "adam_lite":
-            self.low_cmd = pnd_adam_msg_dds__LowCmd_()
-            self.low_state = pnd_adam_msg_dds__LowState_()
+            self.low_cmd = pnd_adam_msg_dds__LowCmd_(31)
+            self.low_state = pnd_adam_msg_dds__LowState_(31)
             self.mode_pr_ = MotorMode.PR
             self.mode_machine_ = 0
 
@@ -51,19 +51,22 @@ class Controller:
 
         # Initialize the command msg
         if config.msg_type == "adam_lite":
-            init_cmd_adam(self.low_cmd, self.mode_machine_, self.mode_pr_)
+            init_cmd_adam(self.low_cmd)
+            # init_cmd_adam(self.low_cmd, self.mode_machine_, self.mode_pr_)
 
     def LowState_Handler(self, msg: LowState_):
         self.low_state = msg
-        self.mode_machine_ = self.low_state.mode_machine
+        # print("Received low state.")
+        # self.mode_machine_ = self.low_state.mode_machine
+        # print("wireless_remote raw:", self.low_state.wireless_remote)
         self.remote_controller.set(self.low_state.wireless_remote)
 
     def send_cmd(self, cmd: LowCmd_):
         self.lowcmd_publisher_.Write(cmd)
 
     def wait_for_low_state(self):
-        while self.low_state.tick == 0:
-            time.sleep(self.config.control_dt)
+        # while self.low_state.tick == 0:
+        time.sleep(self.config.control_dt)
         print("Successfully connected to the robot.")
 
     def zero_torque_state(self):
@@ -213,7 +216,7 @@ if __name__ == "__main__":
     config = Config(config_path)
 
     # Initialize DDS communication
-    ChannelFactoryInitialize(0, args.net)
+    ChannelFactoryInitialize(1, args.net)
 
     controller = Controller(config)
 
