@@ -39,12 +39,14 @@ class Controller:
         elif config.msg_type == "adam_sp":
             self.low_cmd = pnd_adam_msg_dds__LowCmd_(31)
             self.low_state = pnd_adam_msg_dds__LowState_(31)
-            self.hand_cmd = pnd_adam_msg_dds__HandCmd_()
-            self.close_hand = np.array([500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500], dtype=int)
-            self.hand_pub = ChannelPublisher("rt/handcmd", HandCmd_)
-            self.hand_pub.Init()
         else:
             raise ValueError("Invalid msg_type")
+        
+        self.hand_cmd = pnd_adam_msg_dds__HandCmd_()
+        self.close_hand = np.array([500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500], dtype=int)
+        self.hand_pub = ChannelPublisher("rt/handcmd", HandCmd_)
+        self.hand_pub.Init()
+
         self.mode_pr_ = MotorMode.PR
         self.mode_machine_ = 0
 
@@ -88,11 +90,6 @@ class Controller:
 
     def move_to_default_pos(self):
 
-        if config.msg_type != "adam_lite":
-            for i in range(12):
-                self.hand_cmd.position[i] = self.close_hand[i]
-            self.hand_pub.Write(self.hand_cmd)
-
         print("Moving to default pos.")
         # move time 2s
         total_time = 2
@@ -121,16 +118,16 @@ class Controller:
                 self.low_cmd.motor_cmd[motor_idx].kp = kps[j]
                 self.low_cmd.motor_cmd[motor_idx].kd = kds[j]
                 self.low_cmd.motor_cmd[motor_idx].tau = 0
+        # if config.msg_type != "adam_lite":
+            for i in range(12):
+                self.hand_cmd.position[i] = self.close_hand[i]
+            
+            self.hand_pub.Write(self.hand_cmd)
             self.send_cmd(self.low_cmd)
 
             time.sleep(self.config.control_dt)
 
     def default_pos_state(self):
-
-        if config.msg_type != "adam_lite":
-            for i in range(12):
-                self.hand_cmd.position[i] = self.close_hand[i]
-            self.hand_pub.Write(self.hand_cmd)
             
         print("Enter default pos state.")
         print("Waiting for the Button A signal...")
@@ -149,6 +146,12 @@ class Controller:
                 self.low_cmd.motor_cmd[motor_idx].kp = self.config.arm_waist_kps[i]
                 self.low_cmd.motor_cmd[motor_idx].kd = self.config.arm_waist_kds[i]
                 self.low_cmd.motor_cmd[motor_idx].tau = 0
+            
+        # if config.msg_type != "adam_lite":
+            for i in range(12):
+                self.hand_cmd.position[i] = self.close_hand[i]
+            self.hand_pub.Write(self.hand_cmd)
+            
             self.send_cmd(self.low_cmd)
             time.sleep(self.config.control_dt)
 
