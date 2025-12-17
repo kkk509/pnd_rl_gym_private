@@ -34,8 +34,8 @@ class Controller:
         self.counter = 0
        
         if config.msg_type == "adam_lite":
-            self.low_cmd = pnd_adam_msg_dds__LowCmd_(25)
-            self.low_state = pnd_adam_msg_dds__LowState_(25)
+            self.low_cmd = pnd_adam_msg_dds__LowCmd_(23)
+            self.low_state = pnd_adam_msg_dds__LowState_(23)
         elif config.msg_type == "adam_sp":
             self.low_cmd = pnd_adam_msg_dds__LowCmd_(31)
             self.low_state = pnd_adam_msg_dds__LowState_(31)
