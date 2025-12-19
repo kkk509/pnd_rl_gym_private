@@ -32,5 +32,12 @@ class RemoteController:
         # wireless_remote
         for i in range(10):
             self.button[i] = data [i + 8]
-        # for i in range():
-        #     self.button[i] = data[27 + i]
+        self.lx = data[0]
+        self.ly = -data[1]
+        self.rx = -data[2]
+        self.ry = data[3]
+        self.lt = data[4]
+        self.rt = data[5]
+        self.xx = data[6]
+        self.yy = data[7]
+        # print(f"lx: {self.lx}, ly: {self.ly}, rx: {self.rx}, ry: {self.ry}, lt: {self.lt}, rt: {self.rt}, xx: {self.xx}, yy: {self.yy}, buttons: {self.button}")
