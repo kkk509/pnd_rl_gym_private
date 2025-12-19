@@ -11,7 +11,7 @@ def create_damping_cmd(cmd: LowCmd_):
         cmd.motor_cmd[i].q = 0
         cmd.motor_cmd[i].qd = 0
         cmd.motor_cmd[i].kp = 0
-        cmd.motor_cmd[i].kd = 8
+        cmd.motor_cmd[i].kd = 3
         cmd.motor_cmd[i].tau = 0
 
 
