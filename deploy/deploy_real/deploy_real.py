@@ -148,10 +148,6 @@ class Controller:
                 self.low_cmd.motor_cmd[motor_idx].tau = 0
             
         # if config.msg_type != "adam_lite":
-            print("ypr:", self.low_state.imu_state.ypr)
-            quat = ypr_to_quaternion(self.low_state.imu_state.ypr[0],self.low_state.imu_state.ypr[1],self.low_state.imu_state.ypr[2])
-            gravity_orientation = get_gravity_orientation(quat)
-            print(f"Gravity orientation: {gravity_orientation}")
             for i in range(12):
                 self.hand_cmd.position[i] = self.close_hand[i]
             self.hand_pub.Write(self.hand_cmd)
@@ -173,7 +169,8 @@ class Controller:
             self.dqj[i] = self.low_state.motor_state[self.config.leg_joint2motor_idx[i]].dq
 
         # imu_state quaternion: w, x, y, z
-        quat = self.low_state.imu_state.quaternion
+        # quat = self.low_state.imu_state.quaternion
+        quat = ypr_to_quaternion(self.low_state.imu_state.ypr[0],self.low_state.imu_state.ypr[1],self.low_state.imu_state.ypr[2])
         ang_vel = np.array([self.low_state.imu_state.gyroscope], dtype=np.float32)
 
         if self.config.imu_type == "torso":
@@ -234,6 +231,8 @@ class Controller:
             self.low_cmd.motor_cmd[motor_idx].tau = 0
 
         # send the command
+        self.low_cmd.motor_cmd[5].q = self.low_state.motor_state[5].q  # keep ankle motor position
+        self.low_cmd.motor_cmd[11].q = self.low_state.motor_state[11].q  # keep ankle motor position
         self.send_cmd(self.low_cmd)
 
         time.sleep(self.config.control_dt)
