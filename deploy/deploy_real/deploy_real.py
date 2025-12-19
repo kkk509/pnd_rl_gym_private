@@ -84,8 +84,8 @@ class Controller:
         print("Enter zero torque state.")
         print("Waiting for the start signal...")
         while self.remote_controller.button[KeyMap.start] != 1:
-            create_zero_cmd(self.low_cmd)
-            self.send_cmd(self.low_cmd)
+            #create_zero_cmd(self.low_cmd)
+            #self.send_cmd(self.low_cmd)
             time.sleep(self.config.control_dt)
 
     def move_to_default_pos(self):
