@@ -12,7 +12,7 @@ from pndbotics_sdk_py.idl.pnd_adam.msg.dds_ import LowState_
 from pndbotics_sdk_py.idl.pnd_adam.msg.dds_ import HandCmd_
 
 from common.command_helper import create_damping_cmd, create_zero_cmd, init_cmd_adam, MotorMode
-from common.rotation_helper import get_gravity_orientation, transform_imu_data
+from common.rotation_helper import get_gravity_orientation, transform_imu_data, ypr_to_quaternion
 from common.remote_controller import RemoteController, KeyMap
 from config import Config
 
@@ -148,6 +148,10 @@ class Controller:
                 self.low_cmd.motor_cmd[motor_idx].tau = 0
             
         # if config.msg_type != "adam_lite":
+            print("ypr:", self.low_state.imu_state.ypr)
+            quat = ypr_to_quaternion(self.low_state.imu_state.ypr[0],self.low_state.imu_state.ypr[1],self.low_state.imu_state.ypr[2])
+            gravity_orientation = get_gravity_orientation(quat)
+            print(f"Gravity orientation: {gravity_orientation}")
             for i in range(12):
                 self.hand_cmd.position[i] = self.close_hand[i]
             self.hand_pub.Write(self.hand_cmd)
@@ -178,37 +182,36 @@ class Controller:
             waist_yaw_omega = self.low_state.motor_state[self.config.arm_waist_joint2motor_idx[0]].dq
             quat, ang_vel = transform_imu_data(waist_yaw=waist_yaw, waist_yaw_omega=waist_yaw_omega, imu_quat=quat, imu_omega=ang_vel)
 
-        if self.counter % 8 == 0:
-            # create observation
-            gravity_orientation = get_gravity_orientation(quat)
-            qj_obs = self.qj.copy()
-            dqj_obs = self.dqj.copy()
-            qj_obs = (qj_obs - self.config.default_angles) * self.config.dof_pos_scale
-            dqj_obs = dqj_obs * self.config.dof_vel_scale
-            ang_vel = ang_vel * self.config.ang_vel_scale
-            period = 0.8
-            count = self.counter * self.config.control_dt
-            phase = count % period / period
-            sin_phase = np.sin(2 * np.pi * phase)
-            cos_phase = np.cos(2 * np.pi * phase)
+        # create observation
+        gravity_orientation = get_gravity_orientation(quat)
+        qj_obs = self.qj.copy()
+        dqj_obs = self.dqj.copy()
+        qj_obs = (qj_obs - self.config.default_angles) * self.config.dof_pos_scale
+        dqj_obs = dqj_obs * self.config.dof_vel_scale
+        ang_vel = ang_vel * self.config.ang_vel_scale
+        period = 0.8
+        count = self.counter * self.config.control_dt
+        phase = count % period / period
+        sin_phase = np.sin(2 * np.pi * phase)
+        cos_phase = np.cos(2 * np.pi * phase)
 
-            self.cmd[0] = self.remote_controller.ly
-            self.cmd[1] = self.remote_controller.lx
-            self.cmd[2] = self.remote_controller.rx
+        self.cmd[0] = self.remote_controller.ly
+        self.cmd[1] = self.remote_controller.lx
+        self.cmd[2] = self.remote_controller.rx
 
-            num_actions = self.config.num_actions
-            self.obs[:3] = ang_vel
-            self.obs[3:6] = gravity_orientation
-            self.obs[6:9] = self.cmd * self.config.cmd_scale * self.config.max_cmd
-            self.obs[9 : 9 + num_actions] = qj_obs
-            self.obs[9 + num_actions : 9 + num_actions * 2] = dqj_obs
-            self.obs[9 + num_actions * 2 : 9 + num_actions * 3] = self.action
-            self.obs[9 + num_actions * 3] = sin_phase
-            self.obs[9 + num_actions * 3 + 1] = cos_phase
+        num_actions = self.config.num_actions
+        self.obs[:3] = ang_vel
+        self.obs[3:6] = gravity_orientation
+        self.obs[6:9] = self.cmd * self.config.cmd_scale * self.config.max_cmd
+        self.obs[9 : 9 + num_actions] = qj_obs
+        self.obs[9 + num_actions : 9 + num_actions * 2] = dqj_obs
+        self.obs[9 + num_actions * 2 : 9 + num_actions * 3] = self.action
+        self.obs[9 + num_actions * 3] = sin_phase
+        self.obs[9 + num_actions * 3 + 1] = cos_phase
 
-            # Get the action from the policy network
-            obs_tensor = torch.from_numpy(self.obs).unsqueeze(0)
-            self.action = self.policy(obs_tensor).detach().numpy().squeeze()
+        # Get the action from the policy network
+        obs_tensor = torch.from_numpy(self.obs).unsqueeze(0)
+        self.action = self.policy(obs_tensor).detach().numpy().squeeze()
             
         # transform action to target_dof_pos
         target_dof_pos = self.config.default_angles + self.action * self.config.action_scale
