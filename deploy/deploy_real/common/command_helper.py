@@ -1,10 +1,5 @@
 from pndbotics_sdk_py.idl.pnd_adam.msg.dds_ import LowCmd_
 
-class MotorMode:
-    PR = 0  # Series Control for Pitch/Roll Joints
-    AB = 1  # Parallel Control for A/B Joints
-
-
 def create_damping_cmd(cmd: LowCmd_):
     size = len(cmd.motor_cmd)
     for i in range(size):
@@ -25,10 +20,7 @@ def create_zero_cmd(cmd: LowCmd_):
         cmd.motor_cmd[i].tau = 0
 
 
-# def init_cmd_adam(cmd: LowCmd_, mode_machine: int, mode_pr: int):
 def init_cmd_adam(cmd: LowCmd_):
-    # cmd.mode_machine = mode_machine
-    # cmd.mode_pr = mode_pr
     size = len(cmd.motor_cmd)
     for i in range(size):
         cmd.motor_cmd[i].mode = 1

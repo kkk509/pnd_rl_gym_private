@@ -48,7 +48,7 @@ class Controller:
         if config.msg_type == "adam_lite":
             self.low_cmd = pnd_adam_msg_dds__LowCmd_(25)
             self.low_state = pnd_adam_msg_dds__LowState_(25)
-        elif config.msg_type == "adam_sp":
+        elif config.msg_type == "adam_pro":
             self.low_cmd = pnd_adam_msg_dds__LowCmd_(31)
             self.low_state = pnd_adam_msg_dds__LowState_(31)
             self.hand_cmd = pnd_adam_msg_dds__HandCmd_()

@@ -36,17 +36,16 @@ class Controller:
         if config.msg_type == "adam_lite":
             self.low_cmd = pnd_adam_msg_dds__LowCmd_(23)
             self.low_state = pnd_adam_msg_dds__LowState_(23)
-        elif config.msg_type == "adam_sp":
+        elif config.msg_type == "adam_pro":
             self.low_cmd = pnd_adam_msg_dds__LowCmd_(31)
             self.low_state = pnd_adam_msg_dds__LowState_(31)
+            self.hand_cmd = pnd_adam_msg_dds__HandCmd_()
+            self.close_hand = np.array([500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500], dtype=int)
+            self.hand_pub = ChannelPublisher("rt/handcmd", HandCmd_)
+            self.hand_pub.Init()
         else:
             raise ValueError("Invalid msg_type")
         
-        self.hand_cmd = pnd_adam_msg_dds__HandCmd_()
-        self.close_hand = np.array([500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500], dtype=int)
-        self.hand_pub = ChannelPublisher("rt/handcmd", HandCmd_)
-        self.hand_pub.Init()
-
         self.mode_pr_ = MotorMode.PR
         self.mode_machine_ = 0
 
@@ -67,25 +66,22 @@ class Controller:
 
     def LowState_Handler(self, msg: LowState_):
         self.low_state = msg
-        # print("Received low state.")
-        # self.mode_machine_ = self.low_state.mode_machine
-        # print("wireless_remote raw:", self.low_state.wireless_remote)
         self.remote_controller.set(self.low_state.wireless_remote)
 
     def send_cmd(self, cmd: LowCmd_):
         self.lowcmd_publisher_.Write(cmd)
 
     def wait_for_low_state(self):
-        # while self.low_state.tick == 0:
-        time.sleep(self.config.control_dt)
+        while self.low_state.reserve != 1:
+            time.sleep(self.config.control_dt)
         print("Successfully connected to the robot.")
 
     def zero_torque_state(self):
         print("Enter zero torque state.")
         print("Waiting for the start signal...")
         while self.remote_controller.button[KeyMap.start] != 1:
-            #create_zero_cmd(self.low_cmd)
-            #self.send_cmd(self.low_cmd)
+            create_zero_cmd(self.low_cmd)
+            self.send_cmd(self.low_cmd)
             time.sleep(self.config.control_dt)
 
     def move_to_default_pos(self):
@@ -118,10 +114,11 @@ class Controller:
                 self.low_cmd.motor_cmd[motor_idx].kp = kps[j]
                 self.low_cmd.motor_cmd[motor_idx].kd = kds[j]
                 self.low_cmd.motor_cmd[motor_idx].tau = 0
-        # if config.msg_type != "adam_lite":
+    
+        # hand publisher
+        if config.msg_type != "adam_lite":
             for i in range(12):
                 self.hand_cmd.position[i] = self.close_hand[i]
-            
             self.hand_pub.Write(self.hand_cmd)
             self.send_cmd(self.low_cmd)
 
@@ -147,9 +144,10 @@ class Controller:
                 self.low_cmd.motor_cmd[motor_idx].kd = self.config.arm_waist_kds[i]
                 self.low_cmd.motor_cmd[motor_idx].tau = 0
             
-        # if config.msg_type != "adam_lite":
-            for i in range(12):
-                self.hand_cmd.position[i] = self.close_hand[i]
+            # hand publisher
+            if config.msg_type != "adam_lite":
+                for i in range(12):
+                    self.hand_cmd.position[i] = self.close_hand[i]
             self.hand_pub.Write(self.hand_cmd)
             
             self.send_cmd(self.low_cmd)
@@ -157,6 +155,7 @@ class Controller:
 
     def run(self):
 
+        # hand publisher
         if config.msg_type != "adam_lite":
             for i in range(12):
                 self.hand_cmd.position[i] = self.close_hand[i]

@@ -1,7 +1,7 @@
 # Adam Lite 12DOF Real Robot Deployment Configuration
-control_dt: 0.0025
+control_dt: 0.02
 
-msg_type: "adam_sp"     # "adam_lite"
+msg_type: "adam_pro"     # "adam_lite"
 imu_type: "pelvis"    # "torso" or "pelvis"
 
 lowcmd_topic: "rt/lowcmd"
