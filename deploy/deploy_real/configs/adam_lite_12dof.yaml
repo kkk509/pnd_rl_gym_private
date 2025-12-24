@@ -7,7 +7,7 @@ imu_type: "pelvis"    # "torso" or "pelvis"
 lowcmd_topic: "rt/lowcmd"
 lowstate_topic: "rt/lowstate"
 
-policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/pre_train/adam_lite_12dof/C_00_12241408_scale0_5.pt"
+policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/pre_train/adam_lite_12dof/C_00_12241653_action.pt"
 
 # Joint mapping (12 DOF for legs)
 # Joint order: hipPitch_L, hipRoll_L, hipYaw_L, kneePitch_L, anklePitch_L, ankleRoll_L,
@@ -47,5 +47,5 @@ cmd_scale: [2.0, 2.0, 0.25]
 num_actions: 12
 num_obs: 47
 
-max_cmd: [0.4, 0.2, 0.3]
+max_cmd: [0.5, 0.2, 0.3]
 
