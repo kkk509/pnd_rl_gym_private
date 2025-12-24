@@ -69,8 +69,8 @@ class Controller:
         self.lowcmd_publisher_.Write(cmd)
 
     def wait_for_low_state(self):
-        # while self.low_state.tick != 0:
-        #     time.sleep(self.config.control_dt)
+        while self.low_state.tick != 0:
+            time.sleep(self.config.control_dt)
         print("Successfully connected to the robot.")
 
     def zero_torque_state(self):
