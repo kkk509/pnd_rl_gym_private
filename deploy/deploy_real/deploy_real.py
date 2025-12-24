@@ -11,7 +11,7 @@ from pndbotics_sdk_py.idl.pnd_adam.msg.dds_ import LowCmd_
 from pndbotics_sdk_py.idl.pnd_adam.msg.dds_ import LowState_ 
 from pndbotics_sdk_py.idl.pnd_adam.msg.dds_ import HandCmd_
 
-from common.command_helper import create_damping_cmd, create_zero_cmd, init_cmd_adam, MotorMode
+from common.command_helper import create_damping_cmd, create_zero_cmd, init_cmd_adam
 from common.rotation_helper import get_gravity_orientation, transform_imu_data, ypr_to_quaternion
 from common.remote_controller import RemoteController, KeyMap
 from config import Config
@@ -46,9 +46,6 @@ class Controller:
         else:
             raise ValueError("Invalid msg_type")
         
-        self.mode_pr_ = MotorMode.PR
-        self.mode_machine_ = 0
-
         self.lowcmd_publisher_ = ChannelPublisher(config.lowcmd_topic, LowCmd_)
         self.lowcmd_publisher_.Init()
 
@@ -72,8 +69,8 @@ class Controller:
         self.lowcmd_publisher_.Write(cmd)
 
     def wait_for_low_state(self):
-        while self.low_state.tick != 0:
-            time.sleep(self.config.control_dt)
+        # while self.low_state.tick != 0:
+        #     time.sleep(self.config.control_dt)
         print("Successfully connected to the robot.")
 
     def zero_torque_state(self):
@@ -120,7 +117,7 @@ class Controller:
                 for i in range(12):
                     self.hand_cmd.position[i] = self.close_hand[i]
                 self.hand_pub.Write(self.hand_cmd)
-                
+
             self.send_cmd(self.low_cmd)
             time.sleep(self.config.control_dt)
     
@@ -146,12 +143,11 @@ class Controller:
                 self.low_cmd.motor_cmd[motor_idx].kp = self.config.arm_waist_kps[i]
                 self.low_cmd.motor_cmd[motor_idx].kd = self.config.arm_waist_kds[i]
                 self.low_cmd.motor_cmd[motor_idx].tau = 0
-            
             # hand publisher
             if config.msg_type != "adam_lite":
                 for i in range(12):
                     self.hand_cmd.position[i] = self.close_hand[i]
-            self.hand_pub.Write(self.hand_cmd)
+                self.hand_pub.Write(self.hand_cmd)
             
             self.send_cmd(self.low_cmd)
             time.sleep(self.config.control_dt)

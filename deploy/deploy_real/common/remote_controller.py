@@ -40,4 +40,8 @@ class RemoteController:
         self.rt = data[5]
         self.xx = data[6]
         self.yy = data[7]
+        if self.ly > 1:
+            self.ly /= 32767
+        else:
+            self.ly = data[0]
         # print(f"lx: {self.lx}, ly: {self.ly}, rx: {self.rx}, ry: {self.ry}, lt: {self.lt}, rt: {self.rt}, xx: {self.xx}, yy: {self.yy}, buttons: {self.button}")
