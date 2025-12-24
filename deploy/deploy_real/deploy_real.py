@@ -72,7 +72,7 @@ class Controller:
         self.lowcmd_publisher_.Write(cmd)
 
     def wait_for_low_state(self):
-        while self.low_state.tick != 1:
+        while self.low_state.tick != 0:
             time.sleep(self.config.control_dt)
         print("Successfully connected to the robot.")
 
@@ -80,8 +80,8 @@ class Controller:
         print("Enter zero torque state.")
         print("Waiting for the start signal...")
         while self.remote_controller.button[KeyMap.start] != 1:
-            create_zero_cmd(self.low_cmd)
-            self.send_cmd(self.low_cmd)
+            # create_zero_cmd(self.low_cmd)
+            # self.send_cmd(self.low_cmd)
             time.sleep(self.config.control_dt)
 
     def move_to_default_pos(self):
@@ -114,15 +114,18 @@ class Controller:
                 self.low_cmd.motor_cmd[motor_idx].kp = kps[j]
                 self.low_cmd.motor_cmd[motor_idx].kd = kds[j]
                 self.low_cmd.motor_cmd[motor_idx].tau = 0
-    
-        # hand publisher
-        if config.msg_type != "adam_lite":
-            for i in range(12):
-                self.hand_cmd.position[i] = self.close_hand[i]
-            self.hand_pub.Write(self.hand_cmd)
-            self.send_cmd(self.low_cmd)
 
+            # hand publisher
+            if config.msg_type != "adam_lite":
+                for i in range(12):
+                    self.hand_cmd.position[i] = self.close_hand[i]
+                self.hand_pub.Write(self.hand_cmd)
+                
+            self.send_cmd(self.low_cmd)
             time.sleep(self.config.control_dt)
+    
+
+
 
     def default_pos_state(self):
             
