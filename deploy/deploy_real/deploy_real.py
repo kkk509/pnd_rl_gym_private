@@ -72,7 +72,7 @@ class Controller:
         self.lowcmd_publisher_.Write(cmd)
 
     def wait_for_low_state(self):
-        while self.low_state.reserve != 1:
+        while self.low_state.tick != 1:
             time.sleep(self.config.control_dt)
         print("Successfully connected to the robot.")
 
