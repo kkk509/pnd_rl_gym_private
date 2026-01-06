@@ -11,7 +11,7 @@ from pndbotics_sdk_py.idl.pnd_adam.msg.dds_ import LowCmd_
 from pndbotics_sdk_py.idl.pnd_adam.msg.dds_ import LowState_ 
 from pndbotics_sdk_py.idl.pnd_adam.msg.dds_ import HandCmd_
 
-from common.command_helper import create_damping_cmd, create_zero_cmd, init_cmd_adam
+from common.command_helper import create_damping_cmd, create_zero_cmd, init_cmd_adam, MotorMode
 from common.rotation_helper import get_gravity_orientation, transform_imu_data, ypr_to_quaternion
 from common.remote_controller import RemoteController, KeyMap
 from config import Config
@@ -45,7 +45,7 @@ class Controller:
             self.hand_pub.Init()
         else:
             raise ValueError("Invalid msg_type")
-        
+        self.mode_pr_ = MotorMode.PR
         self.lowcmd_publisher_ = ChannelPublisher(config.lowcmd_topic, LowCmd_)
         self.lowcmd_publisher_.Init()
 
@@ -55,11 +55,7 @@ class Controller:
 
         # wait for the subscriber to receive data
         self.wait_for_low_state()
-
-        # Initialize the command msg
-        if config.msg_type == "adam_lite":
-            init_cmd_adam(self.low_cmd)
-            # init_cmd_adam(self.low_cmd, self.mode_machine_, self.mode_pr_)
+        init_cmd_adam(self.low_cmd, self.mode_pr_)
 
     def LowState_Handler(self, msg: LowState_):
         self.low_state = msg
@@ -69,7 +65,8 @@ class Controller:
         self.lowcmd_publisher_.Write(cmd)
 
     def wait_for_low_state(self):
-        while self.low_state.tick != 0:
+        while self.low_state.tick == 0:
+            print("wait for low state")
             time.sleep(self.config.control_dt)
         print("Successfully connected to the robot.")
 
