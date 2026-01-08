@@ -34,7 +34,7 @@ class RemoteController:
         self.max_value = 32767
         self.ly_dir = -1.0
         self.lx_dir = 1.0
-        self.rx_dir = 1.0
+        self.rx_dir = -1.0
         self.max_speed_x = 1.0
         self.min_speed_x = -1.0
         self.max_speed_y = 1.0
