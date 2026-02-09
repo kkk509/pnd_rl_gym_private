@@ -226,6 +226,9 @@ class Controller:
             self.low_cmd.motor_cmd[motor_idx].tau = 0
 
         # send the command
+        self.low_cmd.motor_cmd[4].q *= 0.5  # keep ankle motor position
+        self.low_cmd.motor_cmd[10].q *= 0.5  # keep ankle motor position
+
         self.low_cmd.motor_cmd[5].q = self.low_state.motor_state[5].q  # keep ankle motor position
         self.low_cmd.motor_cmd[11].q = self.low_state.motor_state[11].q  # keep ankle motor position
         self.send_cmd(self.low_cmd)
@@ -268,6 +271,6 @@ if __name__ == "__main__":
         except KeyboardInterrupt:
             break
     # Enter the damping state
-    create_damping_cmd(controller.low_cmd)
-    controller.send_cmd(controller.low_cmd)
+    # create_damping_cmd(controller.low_cmd)
+    # controller.send_cmd(controller.low_cmd)
     print("Exit")

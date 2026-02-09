@@ -7,32 +7,21 @@ imu_type: "pelvis"    # "torso" or "pelvis"
 lowcmd_topic: "rt/lowcmd"
 lowstate_topic: "rt/lowstate"
 
-policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/pre_train/adam_lite_12dof/ap.pt"
+policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/pre_train/adam_lite_12dof/confirm.pt"
 
 # Joint mapping (12 DOF for legs)
 # Joint order: hipPitch_L, hipRoll_L, hipYaw_L, kneePitch_L, anklePitch_L, ankleRoll_L,
 #              hipPitch_R, hipRoll_R, hipYaw_R, kneePitch_R, anklePitch_R, ankleRoll_R
 leg_joint2motor_idx: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
 
-# kps: [305.0, 700.0, 405.0, 305.0, 25.0, 0.0,
-#       305.0, 700.0, 405.0, 305.0, 25.0, 0.0]
+kps: [305.0, 700.0, 405.0, 305.0, 25.0, 0.0,
+      305.0, 700.0, 405.0, 305.0, 25.0, 0.0]
       
-# kds: [6.1, 30.0, 6.1, 6.1, 2.55, 0.35,
-#       6.1, 30.0, 6.1, 6.1, 2.55, 0.35]
+kds: [6.1, 30.0, 6.1, 6.1, 2.55, 0.35,
+      6.1, 30.0, 6.1, 6.1, 2.55, 0.35]
 
-kps: [305.0, 700.0, 405.0, 305.0, 15.0, 15.0,
-      305.0, 700.0, 405.0, 305.0, 15.0, 15.0]
-
-kds: [6.1, 30.0, 6.1, 6.1, 2.5, 2.5,
-      6.1, 30.0, 6.1, 6.1, 2.5, 2.5]
-# default_angles: [-0.1,  0.0,  0.0,  0.35, -0.25, 0.0, 
-#                   -0.1,  0.0,  0.0,  0.35, -0.25, 0.0]
-
-default_angles: [-0.25,  -0.01,  -0.14,  0.49, -0.28, 0.0, 
-                 -0.25,   0.01,   0.14,  0.49, -0.28, 0.0]
-
-# default_angles: [-0.32,  0.0,  -0.18,  0.66, -0.39, 0.0, 
-#                  -0.32,  0.0,  0.18,  0.66, -0.39, 0.0]
+default_angles: [-0.32,  0.0,  -0.18,  0.66, -0.29, 0.0, 
+                 -0.32,  0.0,  0.18,  0.66, -0.29, 0.0]
 # Adam Lite has fixed upper body joints (waist and arms are fixed in URDF)
 # If you need to control them, uncomment and adjust the following:
 
