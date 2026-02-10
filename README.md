@@ -1,3 +1,16 @@
+<div align="center">
+  <h1 align="center">PNDbotics RL GYM</h1>
+</div>
+
+<p align="center">
+  <strong>This is a repository for reinforcement learning implementation based on PNDbotics robots, supporting PNDbotics adam_lite_12dof.</strong> 
+</p>
+
+<div align="center">
+
+| <div align="center"> Isaac Gym </div> | <div align="center">  Mujoco </div> |  <div align="center"> Physical </div> |
+|--- | --- | --- |
+| [<img src="doc/pnd_gif/adam_lite_isaac.gif" width="240px">](https://oss-global-cdn.PNDbotics.com/static/5bbc5ab1d551407080ca9d58d7bec1c8.mp4) | [<img src="doc/pnd_gif/adam_lite_mujoco.gif" width="240px">](https://oss-global-cdn.PNDbotics.com/static/5aa48535ffd641e2932c0ba45c8e7854.mp4) | <img src="doc/pnd_gif/adam_lite_real.gif" width="240px">|
 # Overview
 
 <div align="center">
@@ -109,7 +122,7 @@ Play exports the Actor network, saving it in `logs/{experiment_name}/exported/po
 
 | Adam Lite 12DOF |
 | --- |
-| [![adam_lite_12dof](doc/pnd_gif/adam_lite_isaac.gif)]|
+| ![adam_lite_12dof](doc/pnd_gif/adam_lite_isaac.gif)|
 
 ### 3. Sim2Sim (Mujoco)
 
@@ -136,7 +149,7 @@ The default model is located at `deploy/pre_train/{robot}/motion.pt`; custom-tra
 
 | Adam Lite 12DOF |
 | --- |
-| [![mujoco_adam_lite_12dof](doc/pnd_gif/adam_lite_mujoco.gif)]|
+| ![mujoco_adam_lite_12dof](doc/pnd_gif/adam_lite_mujoco.gif)|
 
 
 ### 4. Sim2Real (Physical Deployment)
@@ -156,7 +169,7 @@ python deploy/deploy_real/deploy_real.py {net_interface} {config_name}
 
 | Adam Lite 12DOF |
 | --- |
-| [![real_adam_lite_12dof](https://oss-global-cdn.pndbotics.com/static/78c61459d3ab41448cfdb31f6a537e8b.GIF)](https://oss-global-cdn.PNDbotics.com/static/0818dcf7a6874b92997354d628adcacd.mp4) |
+| <img src="doc/pnd_gif/adam_lite_real.gif"> |
 
 
 ## 📊 WandB Integration
