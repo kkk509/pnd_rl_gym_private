@@ -1,8 +1,5 @@
 <div align="center">
   <h1 align="center">PNDbotics RL GYM</h1>
-  <p align="center">
-    <span> 🌎English </span> | <a href="README_zh.md"> 🇨🇳中文 </a>
-  </p>
 </div>
 
 <p align="center">
