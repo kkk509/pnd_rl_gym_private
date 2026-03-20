@@ -31,9 +31,9 @@ Controller::Controller(const std::string &net_interface)
 	obs.setZero(num_obs);
 	act.setZero(num_actions);
 
-	module = torch::jit::load("../../../pre_train/adam_lite/motion.pt");
+	module = torch::jit::load("../../../pre_train/adam_lite_12dof/confirm.pt");
 
-	pndbotics::robot::ChannelFactory::Instance()->Init(0, net_interface);
+	pndbotics::robot::ChannelFactory::Instance()->Init(1, net_interface);
 
 	pnd_adam::msg::dds_::LowCmd_(0, std::vector<pnd_adam::msg::dds_::MotorCmd_>(23), 0);
 	pnd_adam::msg::dds_::LowState_(0, 0, pnd_adam::msg::dds_::IMUState_(), std::vector<pnd_adam::msg::dds_::MotorState_>(23), std::array<float,19>{}, 0);
@@ -47,7 +47,7 @@ Controller::Controller(const std::string &net_interface)
 	{
 		usleep(100000);
 	}
-	
+
 	low_cmd_write_thread_ptr = pndbotics::common::CreateRecurrentThreadEx("low_cmd_write", PND_CPU_ID_NONE, 2000, &Controller::low_cmd_write_handler, this);
 	std::cout << "Controller init done!\n";
 }
@@ -60,16 +60,28 @@ void Controller::zero_torque_state()
 	std::cout << "zero_torque_state, press start\n";
 	while (!joystick.button[KeyMap::start])
 	{
+		auto low_state = mLowStateBuf.GetDataPtr();
 		auto low_cmd = std::make_shared<pnd_adam::msg::dds_::LowCmd_>(0, std::vector<pnd_adam::msg::dds_::MotorCmd_>(23), 0);
 
-		for (auto &cmd : low_cmd->motor_cmd())
-		{
-			cmd.q() = 0;
-			cmd.dq() = 0;
-			cmd.kp() = 0;
-			cmd.kd() = 0;
-			cmd.tau() = 0;
-		}
+
+               for (int i = 0; i < 12; i++)
+                {
+                        low_cmd->motor_cmd()[i].q() = low_state->motor_state()[i].q();
+                        low_cmd->motor_cmd()[i].kp() = kps[i];
+                        low_cmd->motor_cmd()[i].kd() = kds[i];
+                        low_cmd->motor_cmd()[i].tau() = 0.0;
+                        low_cmd->motor_cmd()[i].dq() = 0.0;
+                }
+
+                // waist arm
+                for (int i = 12; i < 23; i++)
+                {
+                        low_cmd->motor_cmd()[i].q() = low_state->motor_state()[i].q();
+                        low_cmd->motor_cmd()[i].kp() = arm_waist_kps[i - 12];
+                        low_cmd->motor_cmd()[i].kd() = arm_waist_kds[i - 12];
+                        low_cmd->motor_cmd()[i].tau() = 0.0;
+                        low_cmd->motor_cmd()[i].dq() = 0.0;
+                }
 
 		mLowCmdBuf.SetDataPtr(low_cmd);
 
@@ -98,7 +110,7 @@ void Controller::move_to_default_pos()
 	{
 		auto low_cmd = std::make_shared<pnd_adam::msg::dds_::LowCmd_>(0, std::vector<pnd_adam::msg::dds_::MotorCmd_>(23), 0);
 		float phase = std::clamp<float>(float(count++) / num_steps, 0, 1);
-		
+
 		// leg
 		for (int i = 0; i < 12; i++)
 		{
@@ -176,7 +188,7 @@ void Controller::run()
 		torch::Tensor output_tensor = module.forward(inputs).toTensor();
 		std::memcpy(act.data(), output_tensor.data_ptr<float>(), output_tensor.size(1) * sizeof(float));
 
-		auto low_cmd = std::make_shared<pnd_adam::msg::dds_::LowCmd_>();
+		auto low_cmd = std::make_shared<pnd_adam::msg::dds_::LowCmd_>(0, std::vector<pnd_adam::msg::dds_::MotorCmd_>(23), 0);
 		// leg
 		for (int i = 0; i < 12; i++)
 		{
@@ -188,7 +200,7 @@ void Controller::run()
 		}
 
 		// waist arm
-		for (int i = 12; i < 29; i++)
+		for (int i = 12; i < 23; i++)
 		{
 			low_cmd->motor_cmd()[i].q() = arm_waist_target[i - 12];
 			low_cmd->motor_cmd()[i].kp() = arm_waist_kps[i - 12];
