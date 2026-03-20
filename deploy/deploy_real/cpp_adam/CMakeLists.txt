@@ -1,19 +1,32 @@
 cmake_minimum_required(VERSION 3.16)
 project(adam_deploy_real)
 
-set(CMAKE_BUILD_TYPE Debug)
-
-include_directories(/usr/local/include/ddscxx)
-include_directories(/usr/local/include/iceoryx/v2.0.2)
-
+set(CMAKE_BUILD_TYPE Release)  # Fixed typo
 set(CMAKE_CXX_STANDARD 17)
 
+# Ensure the library path is correct
+link_directories(/opt/pndbotics_sdk/lib)
+
+# Include paths for the libraries
+include_directories(/usr/local/include/ddscxx)
+include_directories(/usr/local/include/ddsc)
+include_directories(/usr/local/include/iceoryx/v2.0.2)
+
+# Torch setup
 set(CMAKE_PREFIX_PATH "${CMAKE_CURRENT_LIST_DIR}/libtorch/share/cmake")
 find_package(Torch REQUIRED)
 include_directories(${TORCH_INCLUDE_DIRS})
 
+# Source files
 aux_source_directory(. SRC_LIST)
 add_executable(${PROJECT_NAME} ${SRC_LIST})
 
-find_package(yaml-cpp REQUIRED)
-target_link_libraries(${PROJECT_NAME} adam ddsc ddscxx ${TORCH_LIBRARIES} yaml-cpp::yaml-cpp pthread)
+# Add yaml-cpp subdirectory
+set(YAML_CPP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/yaml-cpp)
+add_subdirectory(${YAML_CPP_DIR})
+
+# Link the libraries with correct order and paths
+target_link_libraries(${PROJECT_NAME} pndbotics_sdk ddsc ddscxx ${TORCH_LIBRARIES}
+    yaml-cpp::yaml-cpp
+    pthread
+)
