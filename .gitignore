@@ -168,3 +168,6 @@ wandb/
 IsaacGym_Preview_4_Package/
 IsaacGym_Preview_3_Package/
 isaacgym/
+
+libtorch/
+yaml-cpp/

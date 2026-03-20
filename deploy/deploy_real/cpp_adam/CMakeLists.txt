@@ -4,12 +4,12 @@ project(adam_deploy_real)
 set(CMAKE_BUILD_TYPE Release)  # Fixed typo
 set(CMAKE_CXX_STANDARD 17)
 
-# Ensure the library path is correct
-link_directories(/opt/pndbotics_sdk/lib)
-
-# Include paths for the libraries
-include_directories(/usr/local/include/ddscxx)
-include_directories(/usr/local/include/ddsc)
+# pndbotics SDK
+set(PNDBOTICS_SDK_DIR /opt/pndbotics_sdk)
+link_directories(${PNDBOTICS_SDK_DIR}/lib)
+include_directories(${PNDBOTICS_SDK_DIR}/include)
+include_directories(${PNDBOTICS_SDK_DIR}/include/ddscxx)
+include_directories(${PNDBOTICS_SDK_DIR}/include/ddsc)
 include_directories(/usr/local/include/iceoryx/v2.0.2)
 
 # Torch setup

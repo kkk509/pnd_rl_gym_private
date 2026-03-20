@@ -1,11 +1,11 @@
 #ifndef CONTROLLER_H
 #define CONTROLLER_H
 
-#include <pnd/idl/adam/LowCmd_.hpp>
-#include <pnd/idl/adam/LowState_.hpp>
-#include <pnd/robot/channel/channel_subscriber.hpp>
-#include <pnd/robot/channel/channel_publisher.hpp>
-#include <pnd/common/time/time_tool.hpp>
+#include <pndbotics/idl/pnd_adam/LowCmd_.hpp>
+#include <pndbotics/idl/pnd_adam/LowState_.hpp>
+#include <pndbotics/robot/channel/channel_subscriber.hpp>
+#include <pndbotics/robot/channel/channel_publisher.hpp>
+#include <pndbotics/common/time/time_tool.hpp>
 
 #include "torch/script.h"
 
@@ -15,6 +15,7 @@
 #include "DataBuffer.h"
 #include <string>
 
+#include "remote_controller.hpp"
 class Controller
 {
 	public:
@@ -28,16 +29,15 @@ class Controller
 	private:
 		void low_cmd_write_handler();
 
-		pnd::common::ThreadPtr low_cmd_write_thread_ptr;
+		pndbotics::common::ThreadPtr low_cmd_write_thread_ptr;
 
 		DataBuffer<pnd_adam::msg::dds_::LowCmd_> mLowCmdBuf;
 		DataBuffer<pnd_adam::msg::dds_::LowState_> mLowStateBuf;
 
-		pnd::robot::ChannelPublisherPtr<pnd_adam::msg::dds_::LowCmd_> lowcmd_publisher;
-		pnd::robot::ChannelSubscriberPtr<pnd_adam::msg::dds_::LowState_> lowstate_subscriber;
+		pndbotics::robot::ChannelPublisherPtr<pnd_adam::msg::dds_::LowCmd_> lowcmd_publisher;
+		pndbotics::robot::ChannelSubscriberPtr<pnd_adam::msg::dds_::LowState_> lowstate_subscriber;
 
-		// joystick
-		xRockerBtnDataStruct joy;
+		RemoteController joystick;
 
 		// yaml config
 		std::vector<float> leg_joint2motor_idx;
