@@ -2,6 +2,7 @@ import sys
 from legged_gym import LEGGED_GYM_ROOT_DIR
 import os
 import sys
+import time
 from legged_gym import LEGGED_GYM_ROOT_DIR
 
 import isaacgym
@@ -17,7 +18,7 @@ import matplotlib.pyplot as plt
 from collections import defaultdict
 
 
-def plot_data(data_log, dof_names, log_dir):
+def plot_data(data_log, dof_names, log_dir, target_vx):
     """绘制机器人运动数据"""
     time = np.array(data_log['timestep'])
     num_dofs = len(dof_names)
@@ -68,7 +69,7 @@ def plot_data(data_log, dof_names, log_dir):
     ax.plot(time, data_log['lin_vel_x'], 'r-', label='vx (forward)', linewidth=2)
     ax.plot(time, data_log['lin_vel_y'], 'g-', label='vy (lateral)', linewidth=2)
     ax.plot(time, data_log['lin_vel_z'], 'b-', label='vz (vertical)', linewidth=2)
-    ax.axhline(y=1.0, color='r', linestyle='--', alpha=0.5, label='target vx=1.0')
+    ax.axhline(y=target_vx, color='r', linestyle='--', alpha=0.5, label=f'target vx={target_vx:.1f}')
     ax.axhline(y=0.0, color='gray', linestyle='-', alpha=0.3)
     ax.set_xlabel('Time (s)')
     ax.set_ylabel('Velocity (m/s)')
@@ -125,14 +126,15 @@ def plot_data(data_log, dof_names, log_dir):
     
     # 打印统计信息
     print('\n=== Motion Statistics ===')
-    print(f'Average forward velocity: {np.mean(data_log["lin_vel_x"]):.3f} m/s (target: 1.0 m/s)')
+    print(f'Average forward velocity: {np.mean(data_log["lin_vel_x"]):.3f} m/s (target: {target_vx:.1f} m/s)')
     print(f'Average lateral velocity: {np.mean(data_log["lin_vel_y"]):.3f} m/s')
 
 
 def play(args):
     env_cfg, train_cfg = task_registry.get_cfgs(name=args.task)
+    fixed_command = [0.6, 0.0, 0.0]  # vx, vy, yaw_rate
     # override some parameters for testing
-    env_cfg.env.num_envs = min(env_cfg.env.num_envs, 100)
+    env_cfg.env.num_envs = 1
     env_cfg.terrain.num_rows = 5
     env_cfg.terrain.num_cols = 5
     env_cfg.terrain.curriculum = False
@@ -144,10 +146,21 @@ def play(args):
     env_cfg.domain_rand.max_push_vel_xy = 1.5
 
     env_cfg.env.test = True
+    env_cfg.commands.heading_command = False
+    
+    env_cfg.commands.ranges.lin_vel_x = [fixed_command[0], fixed_command[0]]
+    env_cfg.commands.ranges.lin_vel_y = [fixed_command[1], fixed_command[1]]
+    env_cfg.commands.ranges.ang_vel_yaw = [fixed_command[2], fixed_command[2]]
  
     # prepare environment
     env, _ = task_registry.make_env(name=args.task, args=args, env_cfg=env_cfg)
+    env.commands[:, 0] = fixed_command[0]
+    env.commands[:, 1] = fixed_command[1]
+    env.commands[:, 2] = fixed_command[2]
+    if env.commands.shape[1] > 3:
+        env.commands[:, 3] = 0.0
     obs = env.get_observations()
+    obs[:, 6:9] = env.commands[:, :3] * env.commands_scale
     
     # load policy (skip if only testing default pose)
     policy = None
@@ -164,12 +177,7 @@ def play(args):
             export_policy_as_jit(ppo_runner.alg.actor_critic, path)
             print('Exported policy as jit script to: ', path)
 
-    # Set fixed velocity commands for all robots
-    # commands: [lin_vel_x, lin_vel_y, ang_vel_yaw, heading]
-    # env.commands[:, 0] = 0.0  # x方向速度 (m/s)
-    # env.commands[:, 1] = 0.0  # y方向速度 (m/s)  
-    # env.commands[:, 2] = 0.0  # yaw角速度 (rad/s)
-    print(f'Set fixed velocity command: vx={env.commands[0, 0]:.2f} m/s, vy={env.commands[0, 1]:.2f} m/s, vyaw={env.commands[0, 2]:.2f} rad/s')
+    print(f'Set fixed velocity command: vx={fixed_command[0]:.2f} m/s, vy={fixed_command[1]:.2f} m/s, vyaw={fixed_command[2]:.2f} rad/s')
     
     # Print mode information
     if args.test_default_pose:
@@ -198,6 +206,7 @@ def play(args):
     
     num_steps = 5 * int(env.max_episode_length)
     print(f'Running simulation for {num_steps} steps...')
+    wall_start = time.time()
     
     for i in range(num_steps):
         if args.test_default_pose:
@@ -208,11 +217,6 @@ def play(args):
         else:
             actions = policy(obs.detach())
         obs, _, rews, dones, infos = env.step(actions.detach())
-        
-        # Keep the velocity commands fixed (prevent automatic resampling)
-        # env.commands[:, 0] = 0.6
-        # env.commands[:, 1] = 0.0
-        # env.commands[:, 2] = 0.0
         
         # Record data for the first robot (every step)
         # 基座线速度 (body frame)
@@ -248,6 +252,9 @@ def play(args):
         data_log['timestep'].append(i * env.dt)
     
     print('Simulation completed. Generating plots...')
+    wall_time = time.time() - wall_start
+    sim_time = num_steps * env.dt
+    print(f'Simulated time: {sim_time:.2f}s, wall time: {wall_time:.2f}s, real-time factor: {sim_time / wall_time:.2f}x')
     # 获取日志目录路径
     if args.test_default_pose:
         # In test_default_pose mode, save plots to a dedicated directory
@@ -262,7 +269,7 @@ def play(args):
         log_root = os.path.join(LEGGED_GYM_ROOT_DIR, 'logs', train_cfg.runner.experiment_name)
         model_path = get_load_path(log_root, load_run=train_cfg.runner.load_run, checkpoint=train_cfg.runner.checkpoint)
         log_dir = os.path.dirname(model_path)  # 获取模型所在的运行目录
-    plot_data(data_log, dof_names, log_dir)
+    plot_data(data_log, dof_names, log_dir, fixed_command[0])
     print('Plots saved!')
 
 if __name__ == '__main__':

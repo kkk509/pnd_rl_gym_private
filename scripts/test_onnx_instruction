@@ -1,0 +1,15 @@
+import onnx
+
+path = "logs/adam_pro_12dof/exported/onnx/policy_lstm.onnx"
+model = onnx.load(path)
+onnx.checker.check_model(model)
+
+print("ONNX check passed:", path)
+
+print("Inputs:")
+for x in model.graph.input:
+    print(" ", x.name)
+
+print("Outputs:")
+for x in model.graph.output:
+    print(" ", x.name)

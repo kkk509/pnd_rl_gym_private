@@ -7,7 +7,7 @@ imu_type: "pelvis"    # "torso" or "pelvis"
 lowcmd_topic: "rt/lowcmd"
 lowstate_topic: "rt/lowstate"
 
-policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/pre_train/adam_lite_12dof/policy_air_time.pt"
+policy_path: "{LEGGED_GYM_ROOT_DIR}/logs/adam_pro_12dof/exported/policies/policy_lstm_1.pt"
 
 # Joint mapping (12 DOF for legs)
 # Joint order: hipPitch_L, hipRoll_L, hipYaw_L, kneePitch_L, anklePitch_L, ankleRoll_L,
@@ -29,34 +29,36 @@ kds: [6.1, 30.0, 6.1,
       6.1, 2.5, 0.35
       ]
 
-default_angles: [-0.1,  0.0,  0.0,  0.3, -0.2, 0.0, 
-                  -0.1,  0.0,  0.0,  0.3, -0.2, 0.0]
+default_angles: [-0.32,  0.0,  -0.18,  0.66, -0.29, 0.0, 
+                 -0.32,  0.0,  0.18,  0.66, -0.29, 0.0]
 
 # Adam Lite has fixed upper body joints (waist and arms are fixed in URDF)
 # If you need to control them, uncomment and adjust the following:
 arm_waist_joint2motor_idx: [12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30]
 
-arm_waist_kps: [205.0, 405.0, 405.0,  # Waist: waistYaw, waistRoll, waistPitch
-                20,20,                # head: head_pitch, head_yaw
-                18.0, 9.0, 9.0,       # Left arm: shoulderPitch, shoulderRoll, shoulderYaw
-                9.0, 9.0, 9.0, 9.0,   # Left: elbow, wristYaw, wristPitch, wristRoll
-                18.0, 9.0, 9.0,       # Right arm: shoulderPitch, shoulderRoll, shoulderYaw
-                9.0, 9.0, 9.0, 9.0    # Right: elbow, wristYaw, wristPitch, wristRoll
-                ]
+arm_waist_kps: [633.5, 283.5, 143.5,     # Waist: waistYaw, waistRoll, waistPitch
+                14.0, 14.0,              # head: head_pitch, head_yaw
+                70.0, 70.0, 35.0, 35.0,  # arms_left: shoulderPitch, shoulderRoll, shoulderY，elbow
+                0.63, 0.63, 0.63,        # Left: wristYaw, wristPitch, wristRoll
+                70.0, 70.0, 35.0, 35.0,  # arms_right: shoulderPitch, shoulderRoll, shoulderY，elbow
+                0.63, 0.63, 0.63         # Right: wristYaw, wristPitch, wristRoll
+]
 
-arm_waist_kds: [4.1, 6.1, 6.1,        # Waist: waistYaw, waistRoll, waistPitch
-                1, 1,                  # head: head_pitch, head_yaw
-                0.9, 0.9, 0.9, 0.9,   # Left arm: shoulderPitch, shoulderRoll, shoulderYaw
-                0.9, 0.9, 0.9,        # Left: elbow, wristYaw, wristPitch, wristRoll
-                0.9, 0.9, 0.9, 0.9,   # Right arm: shoulderPitch, shoulderRoll, shoulderYaw
-                0.9, 0.9, 0.9]        # Right: elbow, wristYaw, wristPitch, wristRoll
+arm_waist_kds: [28.0, 7.0, 2.87,         # Waist: waistYaw, waistRoll, waistPitch
+                0.7, 0.7,                # head: head_pitch, head_yaw
+                1.4, 1.4, 1.4, 1.4,      # Left arm
+                0.63, 0.63, 0.63,        # Left: wristYaw, wristPitch, wristRoll
+                1.4, 1.4, 1.4, 1.4,      # Right arm
+                0.63, 0.63, 0.63         # Right: wristYaw, wristPitch, wristRoll
+]  
 
-arm_waist_target: [0,0,0, #waist
-                  0,0,
-                  0,0,0,-1.73,
-                  0,0,0, #left arm
-                  0,0,0,-1.73,
-                  0,0,0]
+arm_waist_target: [0,0,0,          # Waist: waistYaw, waistRoll, waistPitch
+                  0,0,             # head: head_pitch, head_yaw
+                  0.6,0,0,-2,      # arms_left: shoulderPitch, shoulderRoll, shoulderY，elbow
+                  0,0,0,           # Left: wristYaw, wristPitch, wristRoll
+                  0.6,0,0,-2,      # arms_right: shoulderPitch, shoulderRoll, shoulderY，elbow
+                  0,0,0            # Right: wristYaw, wristPitch, wristRoll
+                  ]        
 
 ang_vel_scale: 0.25
 dof_pos_scale: 1.0
@@ -66,5 +68,7 @@ cmd_scale: [2.0, 2.0, 0.25]
 num_actions: 12
 num_obs: 47
 
-max_cmd: [0.8, 0.5, 1.57]
+# max_cmd: [0.8, 0.5, 1.57]
+max_cmd: [0.6, 0.2, 0.8]
+
 

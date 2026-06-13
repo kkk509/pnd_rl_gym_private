@@ -27,6 +27,17 @@ def pd_control(target_q, q, kp, target_dq, dq, kd):
     """Calculates torques from position commands"""
     return (target_q - q) * kp + (target_dq - dq) * kd
 
+def wrap_to_pi(angle):
+    return (angle + np.pi) % (2 * np.pi) - np.pi
+
+
+def get_yaw_from_quat(quat):
+    # MuJoCo qpos quaternion order: w, x, y, z
+    qw, qx, qy, qz = quat
+    return np.arctan2(
+        2.0 * (qw * qz + qx * qy),
+        1.0 - 2.0 * (qy * qy + qz * qz),
+    )
 
 if __name__ == "__main__":
     # get config file name from command line
@@ -44,6 +55,7 @@ if __name__ == "__main__":
         simulation_duration = config["simulation_duration"]
         simulation_dt = config["simulation_dt"]
         control_decimation = config["control_decimation"]
+        render_decimation = config.get("render_decimation", 1)
 
         kps = np.array(config["kps"], dtype=np.float32)
         kds = np.array(config["kds"], dtype=np.float32)
@@ -75,8 +87,9 @@ if __name__ == "__main__":
 
     # load policy
     policy = torch.jit.load(policy_path)
-
     with mujoco.viewer.launch_passive(m, d) as viewer:
+        viewer.opt.geomgroup[2] = 0
+        viewer.opt.geomgroup[3] = 1
         # Close the viewer automatically after simulation_duration wall-seconds.
         start = time.time()
         while viewer.is_running() and time.time() - start < simulation_duration:
@@ -97,6 +110,10 @@ if __name__ == "__main__":
                 dqj = d.qvel[6:6+num_actions]
                 quat = d.qpos[3:7]
                 omega = d.qvel[3:6]
+
+                target_heading = 0.0
+                current_heading = get_yaw_from_quat(quat)
+                cmd[2] = np.clip(2.0 * wrap_to_pi(target_heading - current_heading), -1.0, 1.0)
 
                 qj = (qj - default_angles) * dof_pos_scale
                 dqj = dqj * dof_vel_scale
@@ -123,7 +140,8 @@ if __name__ == "__main__":
                 target_dof_pos = action * action_scale + default_angles
 
             # Pick up changes to the physics state, apply perturbations, update options from GUI.
-            viewer.sync()
+            if counter % render_decimation == 0:
+                viewer.sync()
 
             # Rudimentary time keeping, will drift relative to wall clock.
             time_until_next_step = m.opt.timestep - (time.time() - step_start)

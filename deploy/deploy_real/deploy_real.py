@@ -16,6 +16,16 @@ from common.rotation_helper import get_gravity_orientation, transform_imu_data, 
 from common.remote_controller import RemoteController, KeyMap
 from config import Config
 
+def wrap_to_pi(angle):
+    return (angle + np.pi) % (2 * np.pi) - np.pi
+
+
+def get_yaw_from_quat(quat):
+    qw, qx, qy, qz = quat
+    return np.arctan2(
+        2.0 * (qw * qz + qx * qy),
+        1.0 - 2.0 * (qy * qy + qz * qz),
+    )
 
 class Controller:
     def __init__(self, config: Config) -> None:
@@ -32,6 +42,7 @@ class Controller:
         self.obs = np.zeros(config.num_obs, dtype=np.float32)
         self.cmd = np.array([0.0, 0, 0])
         self.counter = 0
+        self.target_heading = None
        
         if config.msg_type == "adam_lite":
             self.low_cmd = pnd_adam_msg_dds__LowCmd_(23)
@@ -189,12 +200,31 @@ class Controller:
 
         self.cmd[0] = self.remote_controller.get_walk_x_direction_speed()
         self.cmd[1] = self.remote_controller.get_walk_y_direction_speed()
-        self.cmd[2] = self.remote_controller.get_walk_yaw_direction_speed()
+
+        manual_yaw = self.remote_controller.get_walk_yaw_direction_speed()
+        current_heading = get_yaw_from_quat(quat)
+
+        if self.target_heading is None:
+            self.target_heading = current_heading
+
+        if abs(manual_yaw) > 0.05:
+            yaw_cmd = manual_yaw * self.config.max_cmd[2]
+            self.target_heading = current_heading
+        else:
+            yaw_cmd = np.clip(
+                2.0 * wrap_to_pi(self.target_heading - current_heading),
+                -self.config.max_cmd[2],
+                self.config.max_cmd[2],
+            )
 
         num_actions = self.config.num_actions
         self.obs[:3] = ang_vel
         self.obs[3:6] = gravity_orientation
-        self.obs[6:9] = self.cmd * self.config.cmd_scale * self.config.max_cmd
+
+        self.obs[6] = self.cmd[0] * self.config.max_cmd[0] * self.config.cmd_scale[0]
+        self.obs[7] = self.cmd[1] * self.config.max_cmd[1] * self.config.cmd_scale[1]
+        self.obs[8] = yaw_cmd * self.config.cmd_scale[2]
+
         self.obs[9 : 9 + num_actions] = qj_obs
         self.obs[9 + num_actions : 9 + num_actions * 2] = dqj_obs
         self.obs[9 + num_actions * 2 : 9 + num_actions * 3] = self.action
