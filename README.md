@@ -1,379 +1,370 @@
-<div align="center">
-  <h1 align="center">PNDbotics RL GYM</h1>
-  <!-- <p align="center">
-    <span> 🌎English </span> | <a href="README_zh.md"> 🇨🇳中文 </a>
-  </p> -->
-</div>
+# PNDbotics RL Gym - Adam Pro 12DoF Workflow
 
-<p align="center">
-  <strong>This is a repository for reinforcement learning implementation based on PNDbotics robots, supporting PNDbotics adam_lite_12dof.</strong> 
-</p>
+This repository contains the current reinforcement-learning training and deployment workflow for the PNDbotics Adam Pro 12DoF leg controller.
 
-<div align="center">
+The main task is:
 
-| <div align="center"> Isaac Gym </div> | <div align="center">  Mujoco </div> |  <div align="center"> Physical </div> |
-|--- | --- | --- |
-| [<img src="doc/pnd_gif/adam_lite_isaac.gif" width="240px">](https://oss-global-cdn.PNDbotics.com/static/5bbc5ab1d551407080ca9d58d7bec1c8.mp4) | [<img src="doc/pnd_gif/adam_lite_mujoco.gif" width="240px">](https://oss-global-cdn.PNDbotics.com/static/5aa48535ffd641e2932c0ba45c8e7854.mp4) | <img src="doc/pnd_gif/adam_lite_real.gif" width="240px">|
-</div>
+```text
+adam_pro_12dof
+```
 
----
+The full workflow is:
 
-## 📦 Installation and Configuration
+```text
+Train in Isaac Gym -> Play and export policy -> Deploy in MuJoCo -> Deploy on the real robot
+```
 
-Please refer to [setup.md](/doc/setup_en.md) for installation and configuration steps.
+## Installation
 
-## 🔁 Process Overview
+Follow the environment setup guide first:
 
-The basic workflow for using reinforcement learning to achieve motion control is:
+```text
+doc/setup_en.md
+```
 
-`Train` → `Play` → `Sim2Sim` → `Sim2Real`
-
-- **Train**: Use the Gym simulation environment to let the robot interact with the environment and find a policy that maximizes the designed rewards. Real-time visualization during training is not recommended to avoid reduced efficiency.
-- **Play**: Use the Play command to verify the trained policy and ensure it meets expectations.
-- **Sim2Sim**: Deploy the Gym-trained policy to other simulators to ensure it’s not overly specific to Gym characteristics.
-- **Sim2Real**: Deploy the policy to a physical robot to achieve motion control.
-
-## 🛠️ User Guide
-
-### 1. Training
-
-Run the following command to start training:
+Typical environment activation:
 
 ```bash
-screen -S pndbotics
-cd ~/Documents/pndbotics_rl_gym
 conda activate pndbotics-rl
-python legged_gym/scripts/train.py --task=adam_lite_12dof --headless
 ```
 
-#### ⚙️ Parameter Description
-- `--task`: Required parameter; values can be (adam_lite_12dof).
-- `--headless`: Defaults to starting with a graphical interface; set to true for headless mode (higher efficiency).
-- `--resume`: Resume training from a checkpoint in the logs.
-- `--experiment_name`: Name of the experiment to run/load.
-- `--run_name`: Name of the run to execute/load.
-- `--load_run`: Name of the run to load; defaults to the latest run.
-- `--checkpoint`: Checkpoint number to load; defaults to the latest file.
-- `--num_envs`: Number of environments for parallel training.
-- `--seed`: Random seed.
-- `--max_iterations`: Maximum number of training iterations.
-- `--sim_device`: Simulation computation device; specify CPU as `--sim_device=cpu`.
-- `--rl_device`: Reinforcement learning computation device; specify CPU as `--rl_device=cpu`.
+## Key Files
 
-**Default Training Result Directory**: `logs/<experiment_name>/<date_time>_<run_name>/model_<iteration>.pt`
+Adam Pro training environment:
 
----
+```text
+legged_gym/envs/adam_pro_12dof/adam_pro_12dof_config.py
+legged_gym/envs/adam_pro_12dof/adam_pro_12dof_env.py
+```
 
-### 2. Play
+Task registration:
 
-To visualize the training results in Gym, run the following command:
+```text
+legged_gym/envs/__init__.py
+```
+
+Play, test, and export:
+
+```text
+legged_gym/scripts/play.py
+legged_gym/scripts/export_lstm_onnx.py
+```
+
+MuJoCo deployment:
+
+```text
+deploy/deploy_mujoco/deploy_mujoco.py
+deploy/deploy_mujoco/configs/adam_pro_12dof.yaml
+resources/robots/adam_pro/scene_adam_pro_12dof_simplified_collision.xml
+```
+
+Real robot deployment:
+
+```text
+deploy/deploy_real/deploy_real.py
+deploy/deploy_real/deploy_real_onnx.py
+deploy/deploy_real/deploy_real_onnx_cpu.py
+deploy/deploy_real/configs/adam_pro_12dof.yaml
+```
+
+## 1. Train Adam Pro 12DoF
+
+Start training:
 
 ```bash
-python legged_gym/scripts/play.py --task=xxx
+python legged_gym/scripts/train.py --task=adam_pro_12dof --headless
 ```
 
-**Description**:
-
-- Play's parameters are the same as Train's.
-- By default, it loads the latest model from the experiment folder's last run.
-- You can specify other models using `load_run` and `checkpoint`.
-
-#### ⚙️ Additional Play Parameters
-
-- `--test_default_pose`: Test default joint angles by setting all actions to zero. This is useful for verifying the robot's default standing posture without policy control.
-
-#### 💾 Export Network
-
-Play exports the Actor network, saving it in `logs/{experiment_name}/exported/policies`:
-- Standard networks (MLP) are exported as `policy_1.pt`.
-- RNN networks are exported as `policy_lstm_1.pt`.
-
-### Play Results
-
-| Adam Lite 12DOF |
-| --- |
-| ![adam_lite_12dof](doc/pnd_gif/adam_lite_isaac.gif)|
-
----
-
-### 3. Sim2Sim (Mujoco)
-
-Run Sim2Sim in the Mujoco simulator:
+Useful options:
 
 ```bash
-python deploy/deploy_mujoco/deploy_mujoco.py {config_name}
+python legged_gym/scripts/train.py --task=adam_pro_12dof --headless --num_envs=4096
+python legged_gym/scripts/train.py --task=adam_pro_12dof --headless --resume
+python legged_gym/scripts/train.py --task=adam_pro_12dof --headless --load_run=<run_name> --checkpoint=<checkpoint_id>
 ```
 
-#### Parameter Description
-- `config_name`: Configuration file; default search path is `deploy/deploy_mujoco/configs/`.
+Training outputs are saved under:
 
-#### Example: Running Adam Lite 12DOF
-
-```bash
-python deploy/deploy_mujoco/deploy_mujoco.py adam_lite_12dof.yaml
+```text
+logs/adam_pro_12dof/<date_time>_pro_12dof_leg_only/
 ```
 
-#### ➡️ Replace Network Model
-
-The default model is located at `deploy/pre_train/{robot}/motion.pt`; custom-trained models are saved in `logs/adam_lite_12dof/exported/policies/policy_lstm_1.pt`. Update the `policy_path` in the YAML configuration file accordingly.
-
-#### Simulation Results
-
-| Adam Lite 12DOF |
-| --- |
-| ![mujoco_adam_lite_12dof](doc/pnd_gif/adam_lite_mujoco.gif)|
-
-
----
-
-### 4. Sim2Real (Physical Deployment)
-
-Before deploying to the physical robot, ensure it’s in debug mode. Detailed steps can be found in the [Physical Deployment Guide](deploy/deploy_real/README.md):
-
-```bash
-python deploy/deploy_real/deploy_real.py {net_interface} {config_name}
-```
-
-
-#### Parameter Description
-- `net_interface`: Network card name connected to the robot, e.g., `enp3s0`.
-- `config_name`: Configuration file located in `deploy/deploy_real/configs/`, e.g., `adam_lite_12dof.yaml`.
-
-#### Deployment Results
-
-| Adam Lite 12DOF |
-| --- |
-| <img src="doc/pnd_gif/adam_lite_real.gif"> |
-
----
-
-## 📊 WandB Integration
-
-This project integrates with [Weights & Biases (WandB)](https://wandb.ai/) for advanced experiment tracking and visualization. WandB provides real-time metrics logging, model versioning, and collaborative experiment management.
-
-### Features
-
-- **Real-time Metrics Logging**: Track training loss, rewards, episode length, and custom metrics
-- **Model Checkpointing**: Automatically save and version model checkpoints
-- **Experiment Comparison**: Compare multiple training runs side-by-side
-- **Hyperparameter Tracking**: Log all configuration parameters for reproducibility
-- **Gradient Monitoring**: Watch model gradients and parameters during training
-
-### Installation
-
-WandB is included in the project dependencies. If not already installed:
-
-```bash
-pip install wandb
-```
-
-### Setup
-
-1. **Create a WandB account** at [https://wandb.ai/](https://wandb.ai/)
-
-2. **Login to WandB**:
-   ```bash
-   wandb login
-   ```
-   
-   You'll be prompted to enter your API key, which can be found at [https://wandb.ai/authorize](https://wandb.ai/authorize)
-
-3. **Verify installation** (optional):
-   ```bash
-   python scripts/test_wandb.py
-   ```
-
-### Usage
-
-#### Enable WandB in Training
-
-To enable WandB logging during training, add the `--wandb` flag:
-
-```bash
-python legged_gym/scripts/train.py --task=adam_lite_12dof --wandb
-```
-
-Or set WandB configuration in your task config file:
+The PPO config currently uses recurrent policy inference:
 
 ```python
-class AdamLite12DofCfgPPO(LeggedRobotCfgPPO):
-    class runner(LeggedRobotCfgPPO.runner):
-        use_wandb = True  # Enable WandB logging
-        wandb_project = "pndbotics_rl_gym"  # Your WandB project name
-        wandb_entity = None  # Your WandB team/username (optional)
-        wandb_tags = ["adam_lite_12dof", "rough_terrain"]  # Tags for organization
+policy_class_name = "ActorCriticRecurrent"
+rnn_type = "lstm"
+rnn_hidden_size = 128
 ```
 
-#### Configuration Options
+## 2. Verify With Play
 
-You can customize WandB behavior through configuration:
+Run the trained policy in Isaac Gym:
 
-```python
-class runner:
-    # WandB settings
-    use_wandb = False          # Enable/disable WandB logging
-    wandb_project = "pndbotics_rl_gym"  # WandB project name
-    wandb_entity = None        # WandB team/username (optional)
-    wandb_tags = []            # List of tags for the run
+```bash
+python legged_gym/scripts/play.py --task=adam_pro_12dof
 ```
 
-#### Logged Metrics
+`play.py` is used for three things:
 
-The WandB integration automatically logs:
+- Verify whether the policy walks correctly in the training simulator.
+- Record base velocity, yaw, contact force, torque, and joint velocity plots.
+- Export the policy for deployment when `EXPORT_POLICY = True`.
 
-- **Training Metrics**:
-  - `Loss/value_function`: Value function loss
-  - `Loss/surrogate`: Policy surrogate loss
-  - `Train/learning_rate`: Current learning rate
-  - `Train/mean_reward`: Average episode reward
-  - `Train/mean_episode_length`: Average episode length
+The exported JIT policy is saved to:
 
-- **Timing Information**:
-  - `Time/collection`: Data collection time
-  - `Time/learn`: Learning update time
-
-- **Episode Information**:
-  - Custom reward components
-  - Environment-specific metrics
-
-- **Model Artifacts**:
-  - Model checkpoints with version tracking
-  - Final model with special "final" alias
-
-### Advanced Features
-
-#### Model Watching
-
-The integration automatically watches model gradients and parameters:
-
-```python
-# This is done automatically in WandbOnPolicyRunner
-wandb_logger.watch_model(model, log_freq=100)
+```text
+logs/adam_pro_12dof/exported/policies/policy_lstm_1.pt
 ```
 
-#### Manual Logging
+To test the default standing pose without policy actions:
 
-You can also manually log custom metrics:
+```bash
+python legged_gym/scripts/play.py --task=adam_pro_12dof --test_default_pose
+```
+
+## 3. Important Heading Command Detail
+
+Adam Pro training uses heading correction:
 
 ```python
-from legged_gym.utils import WandbLogger
+heading_command = True
+```
 
-logger = WandbLogger(
-    project="my_project",
-    experiment_name="my_experiment",
-    run_name="my_run"
+The training logic is in:
+
+```text
+legged_gym/envs/base/legged_robot.py
+```
+
+It computes yaw command as:
+
+```python
+forward = quat_apply(self.base_quat, self.forward_vec)
+heading = torch.atan2(forward[:, 1], forward[:, 0])
+self.commands[:, 2] = torch.clip(
+    0.5 * wrap_to_pi(self.commands[:, 3] - heading),
+    -1.,
+    1.,
 )
-
-# Log custom metrics
-logger.log({"custom_metric": value}, step=iteration)
-
-# Log videos
-logger.log_video("path/to/video.mp4", name="policy_video", step=iteration)
-
-# Save model
-logger.save_model("path/to/model.pt", aliases=["best"])
 ```
 
-### Offline Mode
+Formula:
 
-To run training without internet connection or WandB logging:
+```text
+yaw_cmd = clip(0.5 * wrap_to_pi(target_heading - current_heading), -1, 1)
+```
+
+This matters for deployment. If MuJoCo or real-robot deployment sends a fixed yaw command of `0` instead of this heading correction, the policy may drift and fail to walk in a straight line.
+
+## 4. Deploy in MuJoCo
+
+Run MuJoCo deployment:
 
 ```bash
-WANDB_MODE=disabled python legged_gym/scripts/train.py --task=adam_lite_12dof
+python deploy/deploy_mujoco/deploy_mujoco.py adam_pro_12dof.yaml
 ```
 
-Or set in Python:
+MuJoCo config:
+
+```text
+deploy/deploy_mujoco/configs/adam_pro_12dof.yaml
+```
+
+Important fields:
+
+```yaml
+policy_path: "{LEGGED_GYM_ROOT_DIR}/logs/adam_pro_12dof/exported/policies/policy_lstm_1.pt"
+xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/adam_pro/scene_adam_pro_12dof_simplified_collision.xml"
+cmd_init: [0.8, 0, 0]
+```
+
+For debugging straight walking, first try a lower forward command:
+
+```yaml
+cmd_init: [0.6, 0, 0]
+```
+
+MuJoCo should reproduce the same heading correction used during training:
 
 ```python
-import os
-os.environ['WANDB_MODE'] = 'disabled'
+target_heading = 0.0
+current_heading = get_yaw_from_quat(quat)
+cmd[2] = np.clip(
+    0.5 * wrap_to_pi(target_heading - current_heading),
+    -1.0,
+    1.0,
+)
 ```
 
-### Viewing Results
+If the robot turns harder in the wrong direction, check the yaw sign convention and test:
 
-After starting a training run with WandB enabled:
-
-1. A URL will be printed to the console, e.g.:
-   ```
-   [WandB] ✓ View run at: https://wandb.ai/your-username/pndbotics_rl_gym/runs/xxxxx
-   ```
-
-2. Click the URL or visit [https://wandb.ai/](https://wandb.ai/) to view:
-   - Real-time training metrics and charts
-   - System metrics (GPU/CPU usage, memory)
-   - Model architecture and gradients
-   - Hyperparameters and configuration
-   - Saved model checkpoints
-
-### Troubleshooting
-
-#### Not Logged In
-
-If you see an error about WandB not being logged in:
-
-```bash
-wandb login <your_api_key>
+```python
+cmd[2] = np.clip(
+    0.5 * wrap_to_pi(current_heading - target_heading),
+    -1.0,
+    1.0,
+)
 ```
 
-#### Import Errors
+## 5. Deploy on the Real Robot
 
-If WandB is not found:
+Real robot config:
 
-```bash
-pip install wandb
+```text
+deploy/deploy_real/configs/adam_pro_12dof.yaml
 ```
 
-#### Testing Integration
-
-Run the test script to verify everything is set up correctly:
+Run real deployment:
 
 ```bash
-python scripts/test_wandb.py
+python deploy/deploy_real/deploy_real.py <net_interface> adam_pro_12dof.yaml
 ```
 
-This will check:
-- ✅ WandB installation
-- ✅ Login status
-- ✅ Integration with training code
-- ✅ Configuration files
-
-### Example Workflow
+Example:
 
 ```bash
-# 1. Install and login to WandB
-pip install wandb
+python deploy/deploy_real/deploy_real.py enp3s0 adam_pro_12dof.yaml
+```
+
+Before running policy control:
+
+1. Put the robot in the expected debug/control mode.
+2. Confirm the network interface with `ifconfig` or `ip addr`.
+3. Confirm the robot can enter zero-torque state.
+4. Press the start signal to continue.
+5. Let the controller move the robot to default pose.
+6. Press Button A to enter policy control.
+
+The real deployment observation must match training:
+
+```text
+obs[0:3]   = base angular velocity * ang_vel_scale
+obs[3:6]   = projected gravity
+obs[6:9]   = command * command_scale
+obs[9:21]  = joint position error
+obs[21:33] = joint velocity
+obs[33:45] = previous action
+obs[45:47] = sin/cos phase
+```
+
+For heading correction on the real robot, compute yaw from IMU quaternion and write the corrected yaw command into `obs[8]`. The yaw correction value is already in rad/s, so do not multiply it by `max_cmd[2]` a second time.
+
+Recommended logic:
+
+```python
+self.obs[6] = self.cmd[0] * self.config.max_cmd[0] * self.config.cmd_scale[0]
+self.obs[7] = self.cmd[1] * self.config.max_cmd[1] * self.config.cmd_scale[1]
+self.obs[8] = yaw_cmd * self.config.cmd_scale[2]
+```
+
+Where:
+
+```python
+yaw_cmd = np.clip(
+    0.5 * wrap_to_pi(self.target_heading - current_heading),
+    -self.config.max_cmd[2],
+    self.config.max_cmd[2],
+)
+```
+
+If the yaw correction direction is wrong on hardware, invert the sign convention and test carefully at low speed.
+
+## 6. Optional ONNX Export
+
+Export LSTM policy to ONNX:
+
+```bash
+python legged_gym/scripts/export_lstm_onnx.py --task=adam_pro_12dof
+```
+
+Output:
+
+```text
+logs/adam_pro_12dof/exported/onnx/policy_lstm.onnx
+```
+
+ONNX deployment scripts:
+
+```text
+deploy/deploy_real/deploy_real_onnx.py
+deploy/deploy_real/deploy_real_onnx_cpu.py
+```
+
+Useful checks:
+
+```bash
+python scripts/test_onnx_inference.py
+python scripts/test_onnx_LSTM_state.py
+python scripts/test_onnx_vs_pytorch.py
+```
+
+## 7. WandB
+
+The Adam Pro PPO config enables WandB logging by default:
+
+```python
+use_wandb = True
+wandb_project = "pnd_adam_pro_12dof_locomotion"
+wandb_tags = ["adam_pro_12dof", "rough_terrain", "lstm"]
+```
+
+Login before training if using WandB:
+
+```bash
 wandb login
-
-# 2. Test the integration
-python scripts/test_wandb.py
-
-# 3. Start training with WandB
-python legged_gym/scripts/train.py --task=adam_lite_12dof --wandb
-
-# 4. Monitor training at https://wandb.ai/
-# 5. Compare different runs and hyperparameters
-# 6. Download model checkpoints from WandB
 ```
 
----
+Disable WandB for offline/local runs:
 
-## 🎉 Acknowledgments
+```bash
+WANDB_MODE=disabled python legged_gym/scripts/train.py --task=adam_pro_12dof --headless
+```
 
-This repository is built upon the support and contributions of the following open-source projects. Special thanks to:
+## Troubleshooting
 
-- [legged\_gym](https://github.com/leggedrobotics/legged_gym): The foundation for training and running codes.
-- [rsl\_rl](https://github.com/leggedrobotics/rsl_rl.git): Reinforcement learning algorithm implementation.
-- [mujoco](https://github.com/google-deepmind/mujoco.git): Providing powerful simulation functionalities.
-- [pndbotics\_sdk2\_python](https://github.com/pndbotics/pndbotics_sdk2_python.git): Hardware communication interface for physical deployment.
+### Play walks straight, but MuJoCo does not
 
----
+Check these first:
 
-## 🔖 License
+- MuJoCo uses the same exported policy: `policy_lstm_1.pt`.
+- `cmd_init` is not too aggressive; test `[0.3, 0, 0]` or `[0.6, 0, 0]`.
+- Heading correction is applied before writing `obs[6:9]`.
+- Yaw correction sign is correct.
+- The robot starts from the default joint angles.
 
-This project is licensed under the [BSD 3-Clause License](./LICENSE):
-1. The original copyright notice must be retained.
-2. The project name or organization name may not be used for promotion.
-3. Any modifications must be disclosed.
+### Play itself does not walk straight
 
-For details, please read the full [LICENSE file](./LICENSE).
+This is usually a training or command-mode issue, not MuJoCo:
 
+- Confirm `heading_command = True` if the policy was trained with heading correction.
+- Check average lateral velocity and yaw plots from `play.py`.
+- Check asymmetric long-term actions on `hipRoll`, `hipYaw`, and `ankleRoll`.
+- Review reward weights for lateral velocity, yaw tracking, and orientation.
+
+### Real robot drifts in yaw
+
+Check:
+
+- IMU yaw sign and quaternion convention.
+- Whether `imu_type` is `pelvis` or `torso`.
+- Whether `transform_imu_data` is needed.
+- Whether `yaw_cmd` is scaled once, not twice.
+- Whether manual yaw input from the remote is overriding heading hold.
+
+## Acknowledgments
+
+This repository builds on:
+
+- [legged_gym](https://github.com/leggedrobotics/legged_gym)
+- [rsl_rl](https://github.com/leggedrobotics/rsl_rl.git)
+- [MuJoCo](https://github.com/google-deepmind/mujoco)
+- [pndbotics_sdk2_python](https://github.com/pndbotics/pndbotics_sdk2_python.git)
+
+## License
+
+This project is licensed under the BSD 3-Clause License. See:
+
+```text
+LICENSE
+```

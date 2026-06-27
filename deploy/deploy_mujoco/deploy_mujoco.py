@@ -57,10 +57,30 @@ if __name__ == "__main__":
         control_decimation = config["control_decimation"]
         render_decimation = config.get("render_decimation", 1)
 
+# 增加读取配置
+        command_transition_time = config["command_transition_time"]
+
+        stand_threshold = config["stand_threshold"]
+        walk_threshold = config["walk_threshold"]
+        yaw_motion_scale = config["yaw_motion_scale"]
+
+        gait_period = config["gait_period"]
+        gait_phase_offset = config["gait_phase_offset"]
+# 增加读取配置
+
         kps = np.array(config["kps"], dtype=np.float32)
         kds = np.array(config["kds"], dtype=np.float32)
 
+# 读取默认角度和动作、观测缩放参数
         default_angles = np.array(config["default_angles"], dtype=np.float32)
+
+# 区分目标命令和实际命令
+        cmd = np.array(config["cmd_init"], dtype=np.float32)
+        cmd_target = cmd.copy()
+
+        phase = 0.0
+        walk_weight = 0.0
+# 区分目标命令和实际命令
 
         ang_vel_scale = config["ang_vel_scale"]
         dof_pos_scale = config["dof_pos_scale"]
@@ -70,8 +90,6 @@ if __name__ == "__main__":
 
         num_actions = config["num_actions"]
         num_obs = config["num_obs"]
-        
-        cmd = np.array(config["cmd_init"], dtype=np.float32)
 
     # define context variables
     action = np.zeros(num_actions, dtype=np.float32)
@@ -102,18 +120,43 @@ if __name__ == "__main__":
             mujoco.mj_step(m, d)
 
             counter += 1
-            if counter % control_decimation == 0:
-                # Apply control signal here.
 
+# 引入新的循环命令，测试模型
+            sim_time = counter * simulation_dt
+
+            if sim_time < 5.0:
+                # 站立
+                cmd_target[:] = [0.0, 0.0, 0.0]
+
+            elif sim_time < 10.0:
+                # 向前走
+                cmd_target[:] = [0.4, 0.0, 0.0]
+
+            elif sim_time < 15.0:
+                # 停止并站立
+                cmd_target[:] = [0.0, 0.0, 0.0]
+
+            elif sim_time < 20.0:
+                # 原地转向
+                cmd_target[:] = [0.0, 0.0, 0.3]
+
+            else:
+                # 再次站立
+                cmd_target[:] = [0.0, 0.0, 0.0]
+# 引入新的循环命令，测试模型
+
+# 每 control_decimation 个仿真步执行一次策略推理
+            if counter % control_decimation == 0:
                 # create observation (only for controlled joints)
                 qj = d.qpos[7:7+num_actions]
                 dqj = d.qvel[6:6+num_actions]
                 quat = d.qpos[3:7]
                 omega = d.qvel[3:6]
 
-                target_heading = 0.0
-                current_heading = get_yaw_from_quat(quat)
-                cmd[2] = np.clip(2.0 * wrap_to_pi(target_heading - current_heading), -1.0, 1.0)
+# 禁用码 heading 控制
+                # target_heading = 0.0
+                # current_heading = get_yaw_from_quat(quat)
+                # cmd[2] = np.clip(2.0 * wrap_to_pi(target_heading - current_heading), -1.0, 1.0)
 
                 qj = (qj - default_angles) * dof_pos_scale
                 dqj = dqj * dof_vel_scale
@@ -121,8 +164,45 @@ if __name__ == "__main__":
                 omega = omega * ang_vel_scale
 
                 period = 0.8
-                count = counter * simulation_dt
-                phase = count % period / period
+
+# 禁用当前绝对时间相位
+                # count = counter * simulation_dt
+                # phase = count % period / period
+
+# 使用与训练一致的命令平滑
+                control_dt = simulation_dt * control_decimation
+
+                alpha = min(
+                    control_dt / max(command_transition_time, 1e-6),
+                    1.0,
+                )
+
+                cmd += alpha * (cmd_target - cmd)
+# 使用与训练一致的命令平滑
+
+# 使用与训练一致的模式权重
+                linear_motion = np.linalg.norm(cmd[:2])
+                yaw_motion = yaw_motion_scale * abs(cmd[2])
+                motion = linear_motion + yaw_motion
+
+                walk_weight = np.clip(
+                    (motion - stand_threshold)
+                    / max(walk_threshold - stand_threshold, 1e-6),
+                    0.0,
+                    1.0,
+                )
+# 使用与训练一致的模式权重
+
+# 改成使用步态周期和步态相位偏移计算相位
+                phase = (
+                    phase
+                    + control_dt / gait_period * walk_weight
+                ) % 1.0
+
+                if walk_weight < 0.05:
+                    phase = 0.0
+# 改成使用步态周期和步态相位偏移计算相
+
                 sin_phase = np.sin(2 * np.pi * phase)
                 cos_phase = np.cos(2 * np.pi * phase)
 
