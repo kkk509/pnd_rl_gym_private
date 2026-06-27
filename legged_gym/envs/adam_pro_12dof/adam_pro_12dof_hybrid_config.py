@@ -89,15 +89,29 @@ class AdamPro12dofHybridCfg(AdamPro12dofRoughCfg):
             termination = -5.0
 
     class terrain(AdamPro12dofRoughCfg.terrain):
-        # 第一阶段先使用平地
-        mesh_type = "plane"
-        curriculum = False
-        measure_heights = False
+# 第一阶段先使用平地
+        # mesh_type = "plane"
+        # curriculum = False
+        # measure_heights = False
+
+# 第二阶段再使用 rough
+            mesh_type = "trimesh"
+            curriculum = True
+            measure_heights = True
 
     class domain_rand(AdamPro12dofRoughCfg.domain_rand):
-        # 第一阶段关闭推扰动
-        push_robots = False
-        curriculum = False
+# 第一阶段关闭推扰动
+        # push_robots = False
+        # curriculum = False
+
+# 第二阶段开启推扰动
+        push_robots = True
+        curriculum = True
+
+        initial_push_vel_xy = 0.0
+        max_push_vel_xy = 0.2
+        max_push_vel_xy_curriculum = 0.5
+# 第二阶段开启推扰动
 
         # 可以保留温和的摩擦和质量随机化
         randomize_friction = True
@@ -117,7 +131,7 @@ class AdamPro12dofHybridCfgPPO(AdamPro12dofRoughCfgPPO):
     class runner(AdamPro12dofRoughCfgPPO.runner):
         policy_class_name = "ActorCriticRecurrent"
 
-        max_iterations = 3000
+        max_iterations = 2000
         save_interval = 100
 
         # 暂时保持原 experiment_name，方便读取现有步行 checkpoint

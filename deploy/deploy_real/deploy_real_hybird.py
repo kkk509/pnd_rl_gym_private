@@ -16,6 +16,16 @@ from common.rotation_helper import get_gravity_orientation, transform_imu_data, 
 from common.remote_controller import RemoteController, KeyMap
 from config import Config
 
+def wrap_to_pi(angle):
+    return (angle + np.pi) % (2 * np.pi) - np.pi
+
+
+def get_yaw_from_quat(quat):
+    qw, qx, qy, qz = quat
+    return np.arctan2(
+        2.0 * (qw * qz + qx * qy),
+        1.0 - 2.0 * (qy * qy + qz * qz),
+    )
 
 class Controller:
     def __init__(self, config: Config) -> None:
@@ -30,13 +40,18 @@ class Controller:
         self.action = np.zeros(config.num_actions, dtype=np.float32)
         self.target_dof_pos = config.default_angles.copy()
         self.obs = np.zeros(config.num_obs, dtype=np.float32)
-        self.cmd = np.array([0.0, 0, 0])
+        self.cmd = np.zeros(3, dtype=np.float32)
         self.counter = 0
-       
-        if config.msg_type == "adam_lite":
+        self.target_heading = None
+
+        self.cmd_target = np.zeros(3, dtype=np.float32)
+        self.phase = 0.0
+        self.walk_weight = 0.0
+
+        if self.config.msg_type == "adam_lite":
             self.low_cmd = pnd_adam_msg_dds__LowCmd_(23)
             self.low_state = pnd_adam_msg_dds__LowState_(23)
-        elif config.msg_type == "adam_pro":
+        elif self.config.msg_type == "adam_pro":
             self.low_cmd = pnd_adam_msg_dds__LowCmd_(31)
             self.low_state = pnd_adam_msg_dds__LowState_(31)
             self.hand_cmd = pnd_adam_msg_dds__HandCmd_()
@@ -110,7 +125,7 @@ class Controller:
                 self.low_cmd.motor_cmd[motor_idx].tau = 0
 
             # hand publisher
-            if config.msg_type != "adam_lite":
+            if self.config.msg_type != "adam_lite":
                 for i in range(12):
                     self.hand_cmd.position[i] = self.close_hand[i]
                 self.hand_pub.Write(self.hand_cmd)
@@ -141,7 +156,7 @@ class Controller:
                 self.low_cmd.motor_cmd[motor_idx].kd = self.config.arm_waist_kds[i]
                 self.low_cmd.motor_cmd[motor_idx].tau = 0
             # hand publisher
-            if config.msg_type != "adam_lite":
+            if self.config.msg_type != "adam_lite":
                 for i in range(12):
                     self.hand_cmd.position[i] = self.close_hand[i]
                 self.hand_pub.Write(self.hand_cmd)
@@ -149,10 +164,18 @@ class Controller:
             self.send_cmd(self.low_cmd)
             time.sleep(self.config.control_dt)
 
+        if hasattr(self.policy, "reset_memory"):
+            self.policy.reset_memory()
+        self.action[:] = 0.0
+        self.cmd[:] = 0.0
+        self.cmd_target[:] = 0.0
+        self.phase = 0.0
+        self.walk_weight = 0.0
+
     def run(self):
 
         # hand publisher
-        if config.msg_type != "adam_lite":
+        if self.config.msg_type != "adam_lite":
             for i in range(12):
                 self.hand_cmd.position[i] = self.close_hand[i]
             self.hand_pub.Write(self.hand_cmd)
@@ -166,7 +189,8 @@ class Controller:
         # imu_state quaternion: w, x, y, z
         # quat = self.low_state.imu_state.quaternion
         quat = ypr_to_quaternion(self.low_state.imu_state.ypr[0],self.low_state.imu_state.ypr[1],self.low_state.imu_state.ypr[2])
-        ang_vel = np.array([self.low_state.imu_state.gyroscope], dtype=np.float32)
+
+        ang_vel = np.asarray(self.low_state.imu_state.gyroscope, dtype=np.float32)
 
         if self.config.imu_type == "torso":
             # imu data needs to be transformed to the pelvis frame
@@ -181,20 +205,76 @@ class Controller:
         qj_obs = (qj_obs - self.config.default_angles) * self.config.dof_pos_scale
         dqj_obs = dqj_obs * self.config.dof_vel_scale
         ang_vel = ang_vel * self.config.ang_vel_scale
-        period = 0.8
-        count = self.counter * self.config.control_dt
-        phase = count % period / period
-        sin_phase = np.sin(2 * np.pi * phase)
-        cos_phase = np.cos(2 * np.pi * phase)
 
-        self.cmd[0] = self.remote_controller.get_walk_x_direction_speed()
-        self.cmd[1] = self.remote_controller.get_walk_y_direction_speed()
-        self.cmd[2] = self.remote_controller.get_walk_yaw_direction_speed()
+        # Read normalized joystick commands from the remote controller.
+        # Convert them to physical command targets before smoothing:
+        #   vx/vy in m/s, yaw in rad/s.
+        joystick_x = self.remote_controller.get_walk_x_direction_speed()
+        joystick_y = self.remote_controller.get_walk_y_direction_speed()
+        manual_yaw = self.remote_controller.get_walk_yaw_direction_speed()
+
+        current_heading = get_yaw_from_quat(quat)
+        if self.target_heading is None:
+            self.target_heading = current_heading
+
+        self.cmd_target[0] = joystick_x * self.config.max_cmd[0]
+        self.cmd_target[1] = joystick_y * self.config.max_cmd[1]
+
+        if self.config.use_heading_hold:
+            if abs(manual_yaw) > 0.05:
+                self.cmd_target[2] = manual_yaw * self.config.max_cmd[2]
+                self.target_heading = current_heading
+            else:
+                self.cmd_target[2] = np.clip(
+                    2.0 * wrap_to_pi(self.target_heading - current_heading),
+                    -self.config.max_cmd[2],
+                    self.config.max_cmd[2],
+                )
+        else:
+            # Match deploy_mujoco.py and hybrid training: direct yaw-rate command.
+            self.cmd_target[2] = manual_yaw * self.config.max_cmd[2]
+
+        # Same command smoothing as deploy_mujoco.py.
+        control_dt = self.config.control_dt
+
+        alpha = min(
+            control_dt / max(self.config.command_transition_time, 1e-6),
+            1.0,
+        )
+
+        self.cmd += alpha * (self.cmd_target - self.cmd)
+
+        linear_motion = np.linalg.norm(self.cmd[:2])
+        yaw_motion = self.config.yaw_motion_scale * abs(self.cmd[2])
+        motion = linear_motion + yaw_motion
+
+        self.walk_weight = np.clip(
+            (motion - self.config.stand_threshold)
+            / max(self.config.walk_threshold - self.config.stand_threshold, 1e-6),
+            0.0,
+            1.0,
+        )
+
+        # Same gait phase logic as deploy_mujoco.py / hybrid training.
+        self.phase = (
+            self.phase
+            + control_dt / self.config.gait_period * self.walk_weight
+        ) % 1.0
+
+        if self.walk_weight < 0.05:
+            self.phase = 0.0
+
+        sin_phase = np.sin(2 * np.pi * self.phase)
+        cos_phase = np.cos(2 * np.pi * self.phase)
 
         num_actions = self.config.num_actions
         self.obs[:3] = ang_vel
         self.obs[3:6] = gravity_orientation
-        self.obs[6:9] = self.cmd * self.config.cmd_scale * self.config.max_cmd
+
+        self.obs[6] = self.cmd[0] * self.config.cmd_scale[0]
+        self.obs[7] = self.cmd[1] * self.config.cmd_scale[1]
+        self.obs[8] = self.cmd[2] * self.config.cmd_scale[2]
+
         self.obs[9 : 9 + num_actions] = qj_obs
         self.obs[9 + num_actions : 9 + num_actions * 2] = dqj_obs
         self.obs[9 + num_actions * 2 : 9 + num_actions * 3] = self.action
@@ -203,7 +283,21 @@ class Controller:
 
         # Get the action from the policy network
         obs_tensor = torch.from_numpy(self.obs).unsqueeze(0)
-        self.action = self.policy(obs_tensor).detach().numpy().squeeze()
+        with torch.no_grad():
+            policy_action = self.policy(obs_tensor).detach().numpy().squeeze()
+
+        if self.config.action_clip is not None:
+            policy_action = np.clip(
+                policy_action,
+                -self.config.action_clip,
+                self.config.action_clip,
+            )
+
+        action_alpha = np.clip(self.config.action_filter_alpha, 0.0, 1.0)
+        self.action = (
+            (1.0 - action_alpha) * self.action
+            + action_alpha * policy_action
+        )
             
         # transform action to target_dof_pos
         target_dof_pos = self.config.default_angles + self.action * self.config.action_scale
@@ -225,12 +319,12 @@ class Controller:
             self.low_cmd.motor_cmd[motor_idx].kd = self.config.arm_waist_kds[i]
             self.low_cmd.motor_cmd[motor_idx].tau = 0
 
-        # send the command
-        self.low_cmd.motor_cmd[4].q *= 0.5  # keep ankle motor position
-        self.low_cmd.motor_cmd[10].q *= 0.5  # keep ankle motor position
+        if self.config.lock_ankles:
+            self.low_cmd.motor_cmd[4].q *= 0.5
+            self.low_cmd.motor_cmd[10].q *= 0.5
+            self.low_cmd.motor_cmd[5].q = self.low_state.motor_state[5].q
+            self.low_cmd.motor_cmd[11].q = self.low_state.motor_state[11].q
 
-        self.low_cmd.motor_cmd[5].q = self.low_state.motor_state[5].q  # keep ankle motor position
-        self.low_cmd.motor_cmd[11].q = self.low_state.motor_state[11].q  # keep ankle motor position
         self.send_cmd(self.low_cmd)
 
         time.sleep(self.config.control_dt)
@@ -262,15 +356,15 @@ if __name__ == "__main__":
     # Enter the default position state, press the A key to continue executing
     controller.default_pos_state()
 
-    while True:
-        try:
+    try:
+        while True:
             controller.run()
             # Press the select key to exit
             if controller.remote_controller.button[KeyMap.B] == 1:
                 break
-        except KeyboardInterrupt:
-            break
-    # Enter the damping state
-    # create_damping_cmd(controller.low_cmd)
-    # controller.send_cmd(controller.low_cmd)
-    print("Exit")
+    except KeyboardInterrupt:
+        pass
+    finally:
+        create_damping_cmd(controller.low_cmd)
+        controller.send_cmd(controller.low_cmd)
+        print("Enter damping state. Exit")
