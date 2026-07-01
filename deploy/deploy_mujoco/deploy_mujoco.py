@@ -124,19 +124,19 @@ if __name__ == "__main__":
 # 引入新的循环命令，测试模型
             sim_time = counter * simulation_dt
 
-            if sim_time < 5.0:
+            if sim_time < 2.0:
                 # 站立
                 cmd_target[:] = [0.0, 0.0, 0.0]
 
-            elif sim_time < 10.0:
+            elif sim_time < 25.0:
                 # 向前走
                 cmd_target[:] = [0.4, 0.0, 0.0]
 
-            elif sim_time < 15.0:
+            elif sim_time < 30.0:
                 # 停止并站立
                 cmd_target[:] = [0.0, 0.0, 0.0]
 
-            elif sim_time < 20.0:
+            elif sim_time < 40.0:
                 # 原地转向
                 cmd_target[:] = [0.0, 0.0, 0.3]
 
@@ -209,10 +209,12 @@ if __name__ == "__main__":
                 obs[:3] = omega
                 obs[3:6] = gravity_orientation
                 obs[6:9] = cmd * cmd_scale
+
                 obs[9 : 9 + num_actions] = qj
                 obs[9 + num_actions : 9 + 2 * num_actions] = dqj
                 obs[9 + 2 * num_actions : 9 + 3 * num_actions] = action
                 obs[9 + 3 * num_actions : 9 + 3 * num_actions + 2] = np.array([sin_phase, cos_phase])
+               
                 obs_tensor = torch.from_numpy(obs).unsqueeze(0)
                 # policy inference
                 action = policy(obs_tensor).detach().numpy().squeeze()

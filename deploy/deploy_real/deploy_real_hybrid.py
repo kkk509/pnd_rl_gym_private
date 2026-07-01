@@ -206,6 +206,7 @@ class Controller:
         dqj_obs = dqj_obs * self.config.dof_vel_scale
         ang_vel = ang_vel * self.config.ang_vel_scale
 
+##################
         # Read normalized joystick commands from the remote controller.
         # Convert them to physical command targets before smoothing:
         #   vx/vy in m/s, yaw in rad/s.
@@ -234,7 +235,8 @@ class Controller:
             # Match deploy_mujoco.py and hybrid training: direct yaw-rate command.
             self.cmd_target[2] = manual_yaw * self.config.max_cmd[2]
 
-        # Same command smoothing as deploy_mujoco.py.
+       
+# 使用与训练一致的命令平滑
         control_dt = self.config.control_dt
 
         alpha = min(
@@ -243,7 +245,9 @@ class Controller:
         )
 
         self.cmd += alpha * (self.cmd_target - self.cmd)
+# 使用与训练一致的命令平滑
 
+# 使用与训练一致的模式权重
         linear_motion = np.linalg.norm(self.cmd[:2])
         yaw_motion = self.config.yaw_motion_scale * abs(self.cmd[2])
         motion = linear_motion + yaw_motion
@@ -254,8 +258,9 @@ class Controller:
             0.0,
             1.0,
         )
+# 使用与训练一致的模式权重
 
-        # Same gait phase logic as deploy_mujoco.py / hybrid training.
+# 改成使用步态周期和步态相位偏移计算相位
         self.phase = (
             self.phase
             + control_dt / self.config.gait_period * self.walk_weight
@@ -263,10 +268,11 @@ class Controller:
 
         if self.walk_weight < 0.05:
             self.phase = 0.0
-
+# 改成使用步态周期和步态相位偏移计算相位
         sin_phase = np.sin(2 * np.pi * self.phase)
         cos_phase = np.cos(2 * np.pi * self.phase)
 
+####################
         num_actions = self.config.num_actions
         self.obs[:3] = ang_vel
         self.obs[3:6] = gravity_orientation
@@ -298,7 +304,8 @@ class Controller:
             (1.0 - action_alpha) * self.action
             + action_alpha * policy_action
         )
-            
+
+####################    
         # transform action to target_dof_pos
         target_dof_pos = self.config.default_angles + self.action * self.config.action_scale
 
@@ -318,6 +325,7 @@ class Controller:
             self.low_cmd.motor_cmd[motor_idx].kp = self.config.arm_waist_kps[i]
             self.low_cmd.motor_cmd[motor_idx].kd = self.config.arm_waist_kds[i]
             self.low_cmd.motor_cmd[motor_idx].tau = 0
+######################
 
         if self.config.lock_ankles:
             self.low_cmd.motor_cmd[4].q *= 0.5

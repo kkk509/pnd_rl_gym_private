@@ -181,6 +181,8 @@ class Controller:
         qj_obs = (qj_obs - self.config.default_angles) * self.config.dof_pos_scale
         dqj_obs = dqj_obs * self.config.dof_vel_scale
         ang_vel = ang_vel * self.config.ang_vel_scale
+
+###############
         period = 0.8
         count = self.counter * self.config.control_dt
         phase = count % period / period
@@ -191,10 +193,14 @@ class Controller:
         self.cmd[1] = self.remote_controller.get_walk_y_direction_speed()
         self.cmd[2] = self.remote_controller.get_walk_yaw_direction_speed()
 
+################
         num_actions = self.config.num_actions
         self.obs[:3] = ang_vel
         self.obs[3:6] = gravity_orientation
+
         self.obs[6:9] = self.cmd * self.config.cmd_scale * self.config.max_cmd
+       
+
         self.obs[9 : 9 + num_actions] = qj_obs
         self.obs[9 + num_actions : 9 + num_actions * 2] = dqj_obs
         self.obs[9 + num_actions * 2 : 9 + num_actions * 3] = self.action
@@ -204,7 +210,8 @@ class Controller:
         # Get the action from the policy network
         obs_tensor = torch.from_numpy(self.obs).unsqueeze(0)
         self.action = self.policy(obs_tensor).detach().numpy().squeeze()
-            
+
+ #################           
         # transform action to target_dof_pos
         target_dof_pos = self.config.default_angles + self.action * self.config.action_scale
 
@@ -224,6 +231,7 @@ class Controller:
             self.low_cmd.motor_cmd[motor_idx].kp = self.config.arm_waist_kps[i]
             self.low_cmd.motor_cmd[motor_idx].kd = self.config.arm_waist_kds[i]
             self.low_cmd.motor_cmd[motor_idx].tau = 0
+########################
 
         # send the command
         self.low_cmd.motor_cmd[4].q *= 0.5  # keep ankle motor position
