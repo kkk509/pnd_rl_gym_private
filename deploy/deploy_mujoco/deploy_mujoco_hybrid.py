@@ -27,22 +27,17 @@ def pd_control(target_q, q, kp, target_dq, dq, kd):
     """Calculates torques from position commands"""
     return (target_q - q) * kp + (target_dq - dq) * kd
 
+def wrap_to_pi(angle):
+    return (angle + np.pi) % (2 * np.pi) - np.pi
 
-def configure_lightweight_viewer(viewer, show_mesh):
-    if show_mesh:
-        return
 
-    # Adam Lite visual meshes use group 1; Adam Pro visual meshes use group 2.
-    # Keep primitive collision groups visible so the joint chain remains readable.
-    for group in (1, 2):
-        if group < len(viewer.opt.geomgroup):
-            viewer.opt.geomgroup[group] = 0
-    for group in (0, 3):
-        if group < len(viewer.opt.geomgroup):
-            viewer.opt.geomgroup[group] = 1
-
-    viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_JOINT] = 1
-
+def get_yaw_from_quat(quat):
+    # MuJoCo qpos quaternion order: w, x, y, z
+    qw, qx, qy, qz = quat
+    return np.arctan2(
+        2.0 * (qw * qz + qx * qy),
+        1.0 - 2.0 * (qy * qy + qz * qz),
+    )
 
 if __name__ == "__main__":
     # get config file name from command line
@@ -50,7 +45,6 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("config_file", type=str, help="config file name in the config folder")
-    parser.add_argument("--show-mesh", action="store_true", help="render visual mesh geoms")
     args = parser.parse_args()
     config_file = args.config_file
     with open(f"{LEGGED_GYM_ROOT_DIR}/deploy/deploy_mujoco/configs/{config_file}", "r") as f:
@@ -61,11 +55,32 @@ if __name__ == "__main__":
         simulation_duration = config["simulation_duration"]
         simulation_dt = config["simulation_dt"]
         control_decimation = config["control_decimation"]
+        render_decimation = config.get("render_decimation", 1)
+
+# 增加读取配置
+        command_transition_time = config["command_transition_time"]
+
+        stand_threshold = config["stand_threshold"]
+        walk_threshold = config["walk_threshold"]
+        yaw_motion_scale = config["yaw_motion_scale"]
+
+        gait_period = config["gait_period"]
+        gait_phase_offset = config["gait_phase_offset"]
+# 增加读取配置
 
         kps = np.array(config["kps"], dtype=np.float32)
         kds = np.array(config["kds"], dtype=np.float32)
 
+# 读取默认角度和动作、观测缩放参数
         default_angles = np.array(config["default_angles"], dtype=np.float32)
+
+# 区分目标命令和实际命令
+        cmd = np.array(config["cmd_init"], dtype=np.float32)
+        cmd_target = cmd.copy()
+
+        phase = 0.0
+        walk_weight = 0.0
+# 区分目标命令和实际命令
 
         ang_vel_scale = config["ang_vel_scale"]
         dof_pos_scale = config["dof_pos_scale"]
@@ -75,8 +90,6 @@ if __name__ == "__main__":
 
         num_actions = config["num_actions"]
         num_obs = config["num_obs"]
-        
-        cmd = np.array(config["cmd_init"], dtype=np.float32)
 
     # define context variables
     action = np.zeros(num_actions, dtype=np.float32)
@@ -92,9 +105,9 @@ if __name__ == "__main__":
 
     # load policy
     policy = torch.jit.load(policy_path)
-
     with mujoco.viewer.launch_passive(m, d) as viewer:
-        configure_lightweight_viewer(viewer, args.show_mesh)
+        viewer.opt.geomgroup[2] = 0
+        viewer.opt.geomgroup[3] = 1
         # Close the viewer automatically after simulation_duration wall-seconds.
         start = time.time()
         while viewer.is_running() and time.time() - start < simulation_duration:
@@ -107,14 +120,43 @@ if __name__ == "__main__":
             mujoco.mj_step(m, d)
 
             counter += 1
-            if counter % control_decimation == 0:
-                # Apply control signal here.
 
+# 引入新的循环命令，测试模型
+            sim_time = counter * simulation_dt
+
+            if sim_time < 2.0:
+                # 站立
+                cmd_target[:] = [0.0, 0.0, 0.0]
+
+            elif sim_time < 25.0:
+                # 向前走
+                cmd_target[:] = [0.4, 0.0, 0.0]
+
+            elif sim_time < 30.0:
+                # 停止并站立
+                cmd_target[:] = [0.0, 0.0, 0.0]
+
+            elif sim_time < 40.0:
+                # 原地转向
+                cmd_target[:] = [0.0, 0.0, 0.3]
+
+            else:
+                # 再次站立
+                cmd_target[:] = [0.0, 0.0, 0.0]
+# 引入新的循环命令，测试模型
+
+# 每 control_decimation 个仿真步执行一次策略推理
+            if counter % control_decimation == 0:
                 # create observation (only for controlled joints)
                 qj = d.qpos[7:7+num_actions]
                 dqj = d.qvel[6:6+num_actions]
                 quat = d.qpos[3:7]
                 omega = d.qvel[3:6]
+
+# 禁用码 heading 控制
+                # target_heading = 0.0
+                # current_heading = get_yaw_from_quat(quat)
+                # cmd[2] = np.clip(2.0 * wrap_to_pi(target_heading - current_heading), -1.0, 1.0)
 
                 qj = (qj - default_angles) * dof_pos_scale
                 dqj = dqj * dof_vel_scale
@@ -122,18 +164,57 @@ if __name__ == "__main__":
                 omega = omega * ang_vel_scale
 
                 period = 0.8
-                count = counter * simulation_dt
-                phase = count % period / period
+
+# 禁用当前绝对时间相位
+                # count = counter * simulation_dt
+                # phase = count % period / period
+
+# 使用与训练一致的命令平滑
+                control_dt = simulation_dt * control_decimation
+
+                alpha = min(
+                    control_dt / max(command_transition_time, 1e-6),
+                    1.0,
+                )
+
+                cmd += alpha * (cmd_target - cmd)
+# 使用与训练一致的命令平滑
+
+# 使用与训练一致的模式权重
+                linear_motion = np.linalg.norm(cmd[:2])
+                yaw_motion = yaw_motion_scale * abs(cmd[2])
+                motion = linear_motion + yaw_motion
+
+                walk_weight = np.clip(
+                    (motion - stand_threshold)
+                    / max(walk_threshold - stand_threshold, 1e-6),
+                    0.0,
+                    1.0,
+                )
+# 使用与训练一致的模式权重
+
+# 改成使用步态周期和步态相位偏移计算相位
+                phase = (
+                    phase
+                    + control_dt / gait_period * walk_weight
+                ) % 1.0
+
+                if walk_weight < 0.05:
+                    phase = 0.0
+# 改成使用步态周期和步态相位偏移计算相
+
                 sin_phase = np.sin(2 * np.pi * phase)
                 cos_phase = np.cos(2 * np.pi * phase)
 
                 obs[:3] = omega
                 obs[3:6] = gravity_orientation
                 obs[6:9] = cmd * cmd_scale
+
                 obs[9 : 9 + num_actions] = qj
                 obs[9 + num_actions : 9 + 2 * num_actions] = dqj
                 obs[9 + 2 * num_actions : 9 + 3 * num_actions] = action
                 obs[9 + 3 * num_actions : 9 + 3 * num_actions + 2] = np.array([sin_phase, cos_phase])
+               
                 obs_tensor = torch.from_numpy(obs).unsqueeze(0)
                 # policy inference
                 action = policy(obs_tensor).detach().numpy().squeeze()
@@ -141,7 +222,8 @@ if __name__ == "__main__":
                 target_dof_pos = action * action_scale + default_angles
 
             # Pick up changes to the physics state, apply perturbations, update options from GUI.
-            viewer.sync()
+            if counter % render_decimation == 0:
+                viewer.sync()
 
             # Rudimentary time keeping, will drift relative to wall clock.
             time_until_next_step = m.opt.timestep - (time.time() - step_start)
